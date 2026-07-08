@@ -1,0 +1,16 @@
+# Dépendances
+node_modules/
+
+# Secrets — JAMAIS sur GitHub
+.env
+.env.local
+
+# Build
+dist/
+
+# Prisma — client généré (regénéré via `npx prisma generate`)
+src/generated/
+
+# Divers
+*.log
+.DS_Store
