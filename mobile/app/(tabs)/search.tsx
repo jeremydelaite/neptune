@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   tabTextActive: { color: "#fff" },
   center: { marginTop: 40 },
   list: { paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 100 },
-  row: { justifyContent: "space-between", marginBottom: GAP },
+  row: { gap: GAP, marginBottom: GAP },
   empty: {
     color: colors.dim,
     fontFamily: fonts.body,

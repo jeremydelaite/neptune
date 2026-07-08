@@ -1,7 +1,8 @@
-// Affiche cliquable : image TMDB + dégradé charte + badge type + titre superposé
+// Affiche cliquable : image TMDB (ou placeholder) + dégradé charte + badge type + titre superposé
 import { Pressable, Image, Text, View, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { ImageOff } from "lucide-react-native";
 import { tmdbImage } from "../../services/api";
 import { colors } from "../../theme/colors";
 import { fonts, radius } from "../../theme/typography";
@@ -17,6 +18,7 @@ export function PosterCard({ media, mediaType, width = 106 }: Props) {
   const router = useRouter();
   const title = media.title ?? media.name ?? "";
   const year = (media.release_date ?? media.first_air_date ?? "").slice(0, 4);
+  const uri = tmdbImage(media.poster_path);
 
   return (
     <Pressable
@@ -24,11 +26,13 @@ export function PosterCard({ media, mediaType, width = 106 }: Props) {
       onPress={() => router.push(`/media/${mediaType.toLowerCase()}/${media.id}`)}
     >
       <View style={[styles.poster, { width, height: width * 1.45 }]}>
-        <Image
-          source={{ uri: tmdbImage(media.poster_path) ?? undefined }}
-          style={StyleSheet.absoluteFill}
-          resizeMode="cover"
-        />
+        {uri ? (
+          <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, styles.placeholder]}>
+            <ImageOff size={Math.max(20, width * 0.26)} color="#4B5262" strokeWidth={1.4} />
+          </View>
+        )}
         {/* Dégradé charte pour superposer le texte proprement */}
         <LinearGradient
           colors={["rgba(15,17,21,0)", "rgba(15,17,21,0.9)"]}
@@ -52,6 +56,19 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: colors.surface,
     justifyContent: "flex-end",
+  },
+  placeholder: {
+    backgroundColor: colors.surface2,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 8,
+  },
+  placeholderText: {
+    color: colors.dim,
+    fontFamily: fonts.body,
+    fontSize: 10,
+    textAlign: "center",
   },
   badge: {
     position: "absolute", top: 8, left: 8,
