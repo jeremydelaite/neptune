@@ -15,8 +15,11 @@ export default function ProfileScreen() {
         <Text style={styles.title}>{user?.username}</Text>
         <Text style={styles.email}>{user?.email}</Text>
 
-        <Pressable style={styles.logout} onPress={logout}>
-          <LogOut size={18} color={colors.violetPastel} />
+        <Pressable
+          style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
+          onPress={logout}
+        >
+          <LogOut size={18} color={colors.danger} />
           <Text style={styles.logoutText}>Se déconnecter</Text>
         </Pressable>
       </View>
@@ -35,15 +38,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 8,
     marginTop: "auto",
-    backgroundColor: colors.surface,
+    marginBottom: 96,
+    backgroundColor: colors.dangerSoft,
     borderWidth: 1,
-    borderColor: colors.line,
+    borderColor: colors.dangerLine,
     borderRadius: radius.md,
-    padding: 14,
+    padding: 15,
   },
+  logoutPressed: { opacity: 0.7 },
   logoutText: {
     fontFamily: fonts.headingSemi,
-    fontSize: 14,
-    color: colors.violetPastel,
+    fontSize: 15,
+    color: colors.danger,
   },
 });

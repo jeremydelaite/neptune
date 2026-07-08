@@ -9,4 +9,7 @@ export const colors = {
   violetPastel: "#C4B5FD",
   text: "#F3F4F6",        // texte principal
   dim: "#9CA3AF",         // texte secondaire / métadonnées
+  danger: "#F87171",      // erreurs, déconnexion
+  dangerSoft: "rgba(248,113,113,0.12)",
+  dangerLine: "rgba(248,113,113,0.45)",
 } as const;
