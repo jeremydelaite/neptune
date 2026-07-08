@@ -97,7 +97,7 @@ export function SeasonList({ showId, seasons, watched, onToggle, onMarkSeason, o
               <View style={{ flex: 1 }}>
                 <Text style={styles.seasonName}>{s.name}</Text>
                 <Text style={styles.seasonMeta}>
-                  {watchedCount}/{total} épisode{total > 1 ? "s" : ""} vu{watchedCount > 1 ? "s" : ""}
+                  {watchedCount}/{total} épisode{total > 1 ? "s" : ""} vu{total > 1 ? "s" : ""}
                 </Text>
               </View>
               <Pressable
