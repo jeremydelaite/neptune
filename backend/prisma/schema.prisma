@@ -1,17 +1,17 @@
 // =====================================================
 // NEPTUNE — Schéma de base de données
-// PostgreSQL (Supabase / Neon) + Prisma
+// PostgreSQL Supabase + Prisma
 // Principe : on ne stocke JAMAIS les films/séries,
 // seulement leur tmdbId. Le catalogue vit chez TMDB.
 // =====================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ---------- ENUMS ----------

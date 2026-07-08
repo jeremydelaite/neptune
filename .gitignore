@@ -13,3 +13,5 @@ web-build/
 # Divers
 .DS_Store
 *.log
+
+src/generated/
