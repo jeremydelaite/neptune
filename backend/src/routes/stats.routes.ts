@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { getStats } from "../controllers/stats.controller";
+import { getStats, getActivity } from "../controllers/stats.controller";
 
 const router = Router();
 router.get("/", getStats);
+router.get("/activity", getActivity);
 export default router;

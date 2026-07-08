@@ -1,4 +1,4 @@
-// COMPTE : profil + statistiques poussées (GET /stats)
+// COMPTE : profil + statistiques poussées (GET /stats, /stats/activity)
 import { useCallback, useState } from "react";
 import {
   View,
@@ -9,8 +9,8 @@ import {
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useFocusEffect } from "expo-router";
-import { LogOut, Film, Tv, Clock } from "lucide-react-native";
+import { useFocusEffect, useRouter } from "expo-router";
+import { LogOut, Film, Tv, Clock, Star, MessageSquare } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
@@ -24,7 +24,15 @@ interface Stats {
   monthlyActivity: { month: string; count: number }[];
 }
 
-const MONTH_LETTER = ["", "J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+interface ActivityItem {
+  kind: "rating" | "comment";
+  tmdbId: number;
+  mediaType: "MOVIE" | "TV";
+  title: string;
+  score?: number;
+  content?: string;
+  date: string;
+}
 
 function formatTime(min: number): string {
   if (min < 60) return `${min} min`;
@@ -34,18 +42,31 @@ function formatTime(min: number): string {
   return `${days} j ${hours % 24} h`;
 }
 
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+}
+
 export default function ProfileScreen() {
   const { user, logout } = useAuth();
+  const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
       setLoading(true);
-      api
-        .get<Stats>("/stats")
-        .then((d) => active && setStats(d))
+      Promise.all([
+        api.get<Stats>("/stats"),
+        api.get<{ items: ActivityItem[] }>("/stats/activity"),
+      ])
+        .then(([s, a]) => {
+          if (!active) return;
+          setStats(s);
+          setActivity(a.items ?? []);
+        })
         .catch(() => active && setStats(null))
         .finally(() => active && setLoading(false));
       return () => {
@@ -55,7 +76,6 @@ export default function ProfileScreen() {
   );
 
   const maxRating = Math.max(1, ...(stats?.ratingsBreakdown.map((r) => r.count) ?? [1]));
-  const maxMonth = Math.max(1, ...(stats?.monthlyActivity.map((m) => m.count) ?? [1]));
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -117,29 +137,49 @@ export default function ProfileScreen() {
               })}
             </View>
 
-            {/* Activité mensuelle */}
+            {/* Dernière activité : notes + commentaires */}
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>Activité (12 derniers mois)</Text>
-              {stats.monthlyActivity.length === 0 ? (
-                <Text style={styles.muted}>Pas encore d'activité enregistrée.</Text>
+              <Text style={styles.cardTitle}>Dernière activité</Text>
+              {activity.length === 0 ? (
+                <Text style={styles.muted}>
+                  Aucune note ni commentaire pour l'instant.
+                </Text>
               ) : (
-                <View style={styles.chart}>
-                  {stats.monthlyActivity.map((m) => {
-                    const monthNum = Number(m.month.slice(5, 7));
-                    return (
-                      <View key={m.month} style={styles.barCol}>
-                        <Text style={styles.barCount}>{m.count > 0 ? m.count : ""}</Text>
-                        <View
-                          style={[
-                            styles.bar,
-                            { height: `${Math.max(4, (m.count / maxMonth) * 100)}%` },
-                          ]}
-                        />
-                        <Text style={styles.barLabel}>{MONTH_LETTER[monthNum]}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
+                activity.map((it, i) => (
+                  <Pressable
+                    key={`${it.kind}-${it.tmdbId}-${i}`}
+                    style={[styles.actRow, i > 0 && styles.actRowBorder]}
+                    onPress={() =>
+                      router.push(`/media/${it.mediaType.toLowerCase()}/${it.tmdbId}`)
+                    }
+                  >
+                    <View style={styles.actIcon}>
+                      {it.kind === "rating" ? (
+                        <Star size={15} color={colors.violet} fill={colors.violet} />
+                      ) : (
+                        <MessageSquare size={15} color={colors.violetPastel} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.actTitle} numberOfLines={1}>
+                        {it.title}
+                      </Text>
+                      {it.kind === "rating" ? (
+                        <Text style={styles.actStars}>
+                          {"★".repeat(it.score ?? 0)}
+                          <Text style={styles.actStarsEmpty}>
+                            {"★".repeat(5 - (it.score ?? 0))}
+                          </Text>
+                        </Text>
+                      ) : (
+                        <Text style={styles.actComment} numberOfLines={2}>
+                          {it.content}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={styles.actDate}>{formatDate(it.date)}</Text>
+                  </Pressable>
+                ))
               )}
             </View>
           </>
@@ -213,11 +253,21 @@ const styles = StyleSheet.create({
   ratingFill: { height: "100%", borderRadius: 99, backgroundColor: colors.violet },
   ratingCount: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.text, width: 24, textAlign: "right" },
 
-  chart: { flexDirection: "row", alignItems: "flex-end", height: 120, gap: 4 },
-  barCol: { flex: 1, alignItems: "center", height: "100%", justifyContent: "flex-end" },
-  bar: { width: "70%", minHeight: 4, borderRadius: 4, backgroundColor: colors.violet },
-  barCount: { fontFamily: fonts.body, fontSize: 9, color: colors.dim, marginBottom: 3, height: 12 },
-  barLabel: { fontFamily: fonts.body, fontSize: 10, color: colors.dim, marginTop: 5 },
+  actRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
+  actRowBorder: { borderTopWidth: 1, borderTopColor: colors.line },
+  actIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: colors.surface2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  actTitle: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.text },
+  actStars: { fontSize: 12, color: colors.violet, marginTop: 2 },
+  actStarsEmpty: { color: "#4B5262" },
+  actComment: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginTop: 2 },
+  actDate: { fontFamily: fonts.body, fontSize: 11, color: colors.dim },
 
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
