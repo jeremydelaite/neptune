@@ -11,10 +11,20 @@ router.get("/tv/popular", async (_req, res) => res.json(await tmdbFetch("/tv/pop
 
 // Recherche (onglets Films / Séries séparés)
 router.get("/search/movie", async (req, res) =>
-  res.json(await tmdbFetch("/search/movie", { query: String(req.query.q ?? "") }))
+  res.json(
+    await tmdbFetch("/search/movie", {
+      query: String(req.query.q ?? ""),
+      page: String(req.query.page ?? "1"),
+    })
+  )
 );
 router.get("/search/tv", async (req, res) =>
-  res.json(await tmdbFetch("/search/tv", { query: String(req.query.q ?? "") }))
+  res.json(
+    await tmdbFetch("/search/tv", {
+      query: String(req.query.q ?? ""),
+      page: String(req.query.page ?? "1"),
+    })
+  )
 );
 
 // Fiche détail + saisons

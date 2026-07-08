@@ -12,13 +12,14 @@ interface Props {
   media: TmdbMedia;
   mediaType: MediaType;
   width?: number;
+  posterSize?: "w154" | "w185" | "w342" | "w780";
 }
 
-export function PosterCard({ media, mediaType, width = 106 }: Props) {
+export function PosterCard({ media, mediaType, width = 106, posterSize = "w342" }: Props) {
   const router = useRouter();
   const title = media.title ?? media.name ?? "";
   const year = (media.release_date ?? media.first_air_date ?? "").slice(0, 4);
-  const uri = tmdbImage(media.poster_path);
+  const uri = tmdbImage(media.poster_path, posterSize);
 
   return (
     <Pressable

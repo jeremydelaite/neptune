@@ -1,5 +1,5 @@
-// RECHERCHE : un onglet Films, un onglet Séries
-import { useEffect, useRef, useState } from "react";
+// RECHERCHE : onglets Films/Séries — cache client, anti-race, scroll infini
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -21,11 +21,18 @@ import type { TmdbMedia, MediaType } from "../../src/types";
 
 interface TmdbList {
   results: TmdbMedia[];
+  page: number;
+  total_pages: number;
+}
+
+interface CacheEntry {
+  results: TmdbMedia[];
+  page: number;
+  totalPages: number;
 }
 
 const GAP = 12;
 const PADDING = 16;
-// Supprime le contour bleu par défaut du navigateur (react-native-web)
 const noOutline = Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : null;
 
 export default function SearchScreen() {
@@ -36,45 +43,101 @@ export default function SearchScreen() {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
   const [results, setResults] = useState<TmdbMedia[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const cache = useRef<Map<string, CacheEntry>>(new Map());
+  const reqId = useRef(0); // garde anti-race
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const cacheKey = (t: MediaType, q: string) => `${t}:${q.toLowerCase()}`;
+
+  const fetchPage = useCallback(
+    async (t: MediaType, q: string, pageNum: number, append: boolean) => {
+      const myId = ++reqId.current;
+      const path = t === "MOVIE" ? "movie" : "tv";
+      try {
+        const data = await api.get<TmdbList>(
+          `/tmdb/search/${path}?q=${encodeURIComponent(q)}&page=${pageNum}`
+        );
+        if (myId !== reqId.current) return; // réponse périmée → ignorée
+
+        setResults((prev) => {
+          const merged = append ? [...prev, ...data.results] : data.results;
+          cache.current.set(cacheKey(t, q), {
+            results: merged,
+            page: data.page,
+            totalPages: data.total_pages,
+          });
+          return merged;
+        });
+        setPage(data.page);
+        setTotalPages(data.total_pages);
+      } catch {
+        if (myId === reqId.current && !append) setResults([]);
+      } finally {
+        if (myId === reqId.current) {
+          setLoading(false);
+          setLoadingMore(false);
+        }
+      }
+    },
+    []
+  );
+
+  // Nouvelle recherche quand query ou onglet change
   useEffect(() => {
     const q = query.trim();
     if (debounce.current) clearTimeout(debounce.current);
 
     if (q.length < 2) {
+      reqId.current++; // annule toute réponse en vol
       setResults([]);
+      setPage(1);
+      setTotalPages(1);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-    debounce.current = setTimeout(async () => {
-      try {
-        const path = tab === "MOVIE" ? "movie" : "tv";
-        const data = await api.get<TmdbList>(
-          `/tmdb/search/${path}?q=${encodeURIComponent(q)}`
-        );
-        setResults(data.results ?? []);
-      } catch {
-        setResults([]);
-      } finally {
-        setLoading(false);
-      }
-    }, 350);
+    // Cache client : affichage instantané si déjà cherché
+    const cached = cache.current.get(cacheKey(tab, q));
+    if (cached) {
+      reqId.current++;
+      setResults(cached.results);
+      setPage(cached.page);
+      setTotalPages(cached.totalPages);
+      setLoading(false);
+      return;
+    }
 
+    setLoading(true); // pas de vidage : les anciens résultats restent visibles
+    debounce.current = setTimeout(() => fetchPage(tab, q, 1, false), 350);
     return () => {
       if (debounce.current) clearTimeout(debounce.current);
     };
-  }, [query, tab]);
+  }, [query, tab, fetchPage]);
+
+  const loadMore = () => {
+    const q = query.trim();
+    if (loading || loadingMore || q.length < 2 || page >= totalPages) return;
+    setLoadingMore(true);
+    fetchPage(tab, q, page + 1, true);
+  };
 
   const trimmed = query.trim();
+  const showInitialSpinner = loading && results.length === 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Recherche</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.title}>Recherche</Text>
+          {loading && results.length > 0 && (
+            <ActivityIndicator size="small" color={colors.violetPastel} />
+          )}
+        </View>
 
         <View style={[styles.searchBar, focused && styles.searchBarFocused]}>
           <Search size={18} color={focused ? colors.violetPastel : colors.dim} />
@@ -115,7 +178,7 @@ export default function SearchScreen() {
         </View>
       </View>
 
-      {loading ? (
+      {showInitialSpinner ? (
         <ActivityIndicator style={styles.center} color={colors.violet} />
       ) : (
         <FlatList
@@ -125,8 +188,13 @@ export default function SearchScreen() {
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
           keyboardShouldPersistTaps="handled"
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.5}
+          removeClippedSubviews
+          initialNumToRender={12}
+          windowSize={7}
           renderItem={({ item }) => (
-            <PosterCard media={item} mediaType={tab} width={cardWidth} />
+            <PosterCard media={item} mediaType={tab} width={cardWidth} posterSize="w185" />
           )}
           ListEmptyComponent={
             <Text style={styles.empty}>
@@ -134,6 +202,11 @@ export default function SearchScreen() {
                 ? "Tape au moins 2 caractères pour lancer la recherche."
                 : "Aucun résultat."}
             </Text>
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <ActivityIndicator style={{ marginVertical: 16 }} color={colors.violet} />
+            ) : null
           }
         />
       )}
@@ -144,7 +217,8 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 8 },
-  title: { fontFamily: fonts.heading, fontSize: 24, color: colors.text, marginBottom: 16 },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 16 },
+  title: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",

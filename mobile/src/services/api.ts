@@ -29,5 +29,8 @@ export const api = {
 };
 
 // Helper images TMDB (CDN gratuit)
-export const tmdbImage = (path: string | null, size: "w342" | "w780" = "w342") =>
+export const tmdbImage = (
+  path: string | null,
+  size: "w154" | "w185" | "w342" | "w780" = "w342"
+) =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
