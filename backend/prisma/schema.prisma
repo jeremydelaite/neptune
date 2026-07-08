@@ -1,0 +1,118 @@
+// =====================================================
+// NEPTUNE — Schéma de base de données
+// PostgreSQL (Supabase / Neon) + Prisma
+// Principe : on ne stocke JAMAIS les films/séries,
+// seulement leur tmdbId. Le catalogue vit chez TMDB.
+// =====================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- ENUMS ----------
+
+enum MediaType {
+  MOVIE
+  TV
+}
+
+enum TrackStatus {
+  TO_WATCH // À voir
+  WATCHING // En cours
+  COMPLETED // Vu / Terminée
+  DROPPED // Abandonnée
+}
+
+// ---------- MODÈLES ----------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  username     String   @unique
+  passwordHash String   @map("password_hash")
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  trackedItems    TrackedItem[]
+  watchedEpisodes WatchedEpisode[]
+  ratings         Rating[]
+  comments        Comment[]
+
+  @@map("users")
+}
+
+// Un film ou une série dans la bibliothèque d'un utilisateur
+model TrackedItem {
+  id        String      @id @default(uuid())
+  userId    String      @map("user_id")
+  tmdbId    Int         @map("tmdb_id")
+  mediaType MediaType   @map("media_type")
+  status    TrackStatus @default(TO_WATCH)
+  addedAt   DateTime    @default(now()) @map("added_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Un même titre ne peut être suivi qu'une fois par utilisateur
+  @@unique([userId, tmdbId, mediaType])
+  @@index([userId, status])
+  @@map("tracked_items")
+}
+
+// Épisodes cochés (séries uniquement)
+model WatchedEpisode {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  tmdbShowId    Int      @map("tmdb_show_id")
+  seasonNumber  Int      @map("season_number")
+  episodeNumber Int      @map("episode_number")
+  // runtime TMDB copié au moment du "vu" → stats de temps sans re-requêter TMDB
+  runtimeMin    Int?     @map("runtime_min")
+  watchedAt     DateTime @default(now()) @map("watched_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tmdbShowId, seasonNumber, episodeNumber])
+  @@index([userId, tmdbShowId])
+  @@map("watched_episodes")
+}
+
+// Note sur 5 (entier, pas de demi-point)
+model Rating {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tmdbId    Int       @map("tmdb_id")
+  mediaType MediaType @map("media_type")
+  score     Int // 1 à 5 — validé côté API (zod)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Une seule note par titre et par utilisateur
+  @@unique([userId, tmdbId, mediaType])
+  @@index([tmdbId, mediaType]) // moyenne des notes d'un titre
+  @@map("ratings")
+}
+
+// Commentaires — table séparée : commentaire possible SANS note,
+// et tri par date sous chaque fiche
+model Comment {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tmdbId    Int       @map("tmdb_id")
+  mediaType MediaType @map("media_type")
+  content   String    @db.Text
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tmdbId, mediaType, createdAt]) // liste triée par date sous une fiche
+  @@map("comments")
+}

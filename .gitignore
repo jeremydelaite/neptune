@@ -1,0 +1,15 @@
+# Dépendances
+node_modules/
+
+# Secrets — JAMAIS sur GitHub
+.env
+.env.local
+
+# Builds
+dist/
+.expo/
+web-build/
+
+# Divers
+.DS_Store
+*.log
