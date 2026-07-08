@@ -8,6 +8,7 @@ import {
   FlatList,
   ActivityIndicator,
   StyleSheet,
+  Platform,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,6 +25,8 @@ interface TmdbList {
 
 const GAP = 12;
 const PADDING = 16;
+// Supprime le contour bleu par défaut du navigateur (react-native-web)
+const noOutline = Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : null;
 
 export default function SearchScreen() {
   const { width } = useWindowDimensions();
@@ -31,6 +34,7 @@ export default function SearchScreen() {
 
   const [tab, setTab] = useState<MediaType>("MOVIE");
   const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
   const [results, setResults] = useState<TmdbMedia[]>([]);
   const [loading, setLoading] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,14 +76,16 @@ export default function SearchScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>Recherche</Text>
 
-        <View style={styles.searchBar}>
-          <Search size={18} color={colors.dim} />
+        <View style={[styles.searchBar, focused && styles.searchBarFocused]}>
+          <Search size={18} color={focused ? colors.violetPastel : colors.dim} />
           <TextInput
-            style={styles.input}
+            style={[styles.input, noOutline]}
             placeholder={tab === "MOVIE" ? "Rechercher un film…" : "Rechercher une série…"}
             placeholderTextColor={colors.dim}
             value={query}
             onChangeText={setQuery}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -137,7 +143,7 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: PADDING, paddingTop: 4 },
+  header: { paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 16 },
   title: { fontFamily: fonts.heading, fontSize: 24, color: colors.text, marginBottom: 16 },
   searchBar: {
     flexDirection: "row",
@@ -150,6 +156,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 46,
   },
+  searchBarFocused: { borderColor: colors.violet },
   input: {
     flex: 1,
     color: colors.text,
@@ -170,7 +177,7 @@ const styles = StyleSheet.create({
   tabText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim },
   tabTextActive: { color: "#fff" },
   center: { marginTop: 40 },
-  list: { padding: PADDING, paddingBottom: 100 },
+  list: { paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 100 },
   row: { justifyContent: "space-between", marginBottom: GAP },
   empty: {
     color: colors.dim,
