@@ -50,6 +50,7 @@ export default function SearchScreen() {
 
   const cache = useRef<Map<string, CacheEntry>>(new Map());
   const reqId = useRef(0); // garde anti-race
+  const loadingMoreRef = useRef(false); // verrou page suivante (évite les doublons)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cacheKey = (t: MediaType, q: string) => `${t}:${q.toLowerCase()}`;
@@ -65,7 +66,9 @@ export default function SearchScreen() {
         if (myId !== reqId.current) return; // réponse périmée → ignorée
 
         setResults((prev) => {
-          const merged = append ? [...prev, ...data.results] : data.results;
+          const base = append ? prev : [];
+          const seen = new Set(base.map((m) => m.id));
+          const merged = [...base, ...data.results.filter((m) => !seen.has(m.id))];
           cache.current.set(cacheKey(t, q), {
             results: merged,
             page: data.page,
@@ -82,6 +85,7 @@ export default function SearchScreen() {
           setLoading(false);
           setLoadingMore(false);
         }
+        loadingMoreRef.current = false;
       }
     },
     []
@@ -94,6 +98,7 @@ export default function SearchScreen() {
 
     if (q.length < 2) {
       reqId.current++; // annule toute réponse en vol
+      loadingMoreRef.current = false;
       setResults([]);
       setPage(1);
       setTotalPages(1);
@@ -121,7 +126,8 @@ export default function SearchScreen() {
 
   const loadMore = () => {
     const q = query.trim();
-    if (loading || loadingMore || q.length < 2 || page >= totalPages) return;
+    if (loading || loadingMoreRef.current || q.length < 2 || page >= totalPages) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
     fetchPage(tab, q, page + 1, true);
   };
