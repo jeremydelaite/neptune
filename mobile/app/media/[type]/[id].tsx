@@ -1,25 +1,298 @@
-// FICHE DÉTAIL film/série : statut, note 5 étoiles, saisons, commentaires
-import { useLocalSearchParams } from "expo-router";
-import { ScrollView, Text, StyleSheet } from "react-native";
+// FICHE DÉTAIL film/série : bannière, statut, note, saisons (séries)
+import { useCallback, useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  ScrollView,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
+import { ArrowLeft, Star } from "lucide-react-native";
+import { api, tmdbImage } from "../../../src/services/api";
+import { StatusButtons } from "../../../src/components/media/StatusButtons";
+import { StarRating } from "../../../src/components/ui/StarRating";
+import { SeasonList, epKey, type TmdbSeason } from "../../../src/components/media/SeasonList";
 import { colors } from "../../../src/theme/colors";
-import { fonts } from "../../../src/theme/typography";
+import { fonts, radius } from "../../../src/theme/typography";
+import type { MediaType, TrackStatus } from "../../../src/types";
+
+interface MediaDetail {
+  id: number;
+  title?: string;
+  name?: string;
+  overview: string;
+  backdrop_path: string | null;
+  poster_path: string | null;
+  release_date?: string;
+  first_air_date?: string;
+  vote_average: number;
+  runtime?: number;
+  genres: { id: number; name: string }[];
+  seasons?: TmdbSeason[];
+}
+
+interface WatchedEp {
+  seasonNumber: number;
+  episodeNumber: number;
+}
 
 export default function MediaDetailScreen() {
   const { type, id } = useLocalSearchParams<{ type: string; id: string }>();
-  // TODO:
-  // - GET /tmdb/{type}/{id} → bannière (backdrop + LinearGradient charte), titre, genres
-  // - <StatusButtons /> → POST /library
-  // - <StarRating /> → PUT /ratings
-  // - Saisons (séries) : GET /tmdb/tv/:id/season/:n + bouton "Tout marquer vu"
-  // - Commentaires : GET /comments/{type}/{id}?sort=recent|old, tri par date
+  const router = useRouter();
+  const mediaType: MediaType = type === "tv" ? "TV" : "MOVIE";
+  const tmdbId = Number(id);
+
+  const [data, setData] = useState<MediaDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<TrackStatus | null>(null);
+  const [myScore, setMyScore] = useState(0);
+  const [watched, setWatched] = useState<Set<string>>(new Set());
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      setLoading(true);
+      Promise.all([
+        api.get<MediaDetail>(`/tmdb/${type}/${id}`),
+        api.get<{ tmdbId: number; mediaType: MediaType; status: TrackStatus }[]>("/library"),
+        api.get<{ myScore: number | null }>(`/ratings/${type}/${id}`),
+        mediaType === "TV"
+          ? api.get<WatchedEp[]>(`/episodes/${id}`)
+          : Promise.resolve<WatchedEp[]>([]),
+      ])
+        .then(([detail, library, rating, eps]) => {
+          if (!active) return;
+          setData(detail);
+          const tracked = library.find(
+            (l) => l.tmdbId === tmdbId && l.mediaType === mediaType
+          );
+          setStatus(tracked?.status ?? null);
+          setMyScore(rating.myScore ?? 0);
+          setWatched(new Set(eps.map((e) => epKey(e.seasonNumber, e.episodeNumber))));
+        })
+        .catch(() => active && setData(null))
+        .finally(() => active && setLoading(false));
+      return () => {
+        active = false;
+      };
+    }, [type, id])
+  );
+
+  async function selectStatus(next: TrackStatus) {
+    if (next === status) {
+      setStatus(null); // retire de la bibliothèque
+      await api.delete(`/library/${mediaType}/${tmdbId}`).catch(() => {});
+    } else {
+      setStatus(next);
+      await api.post("/library", { tmdbId, mediaType, status: next }).catch(() => {});
+    }
+  }
+
+  async function rate(score: number) {
+    setMyScore(score);
+    await api.put("/ratings", { tmdbId, mediaType, score }).catch(() => {});
+  }
+
+  async function toggleEpisode(season: number, ep: number, runtime: number | null) {
+    const k = epKey(season, ep);
+    setWatched((prev) => {
+      const n = new Set(prev);
+      n.has(k) ? n.delete(k) : n.add(k);
+      return n;
+    });
+    await api
+      .post("/episodes/toggle", {
+        tmdbShowId: tmdbId,
+        seasonNumber: season,
+        episodeNumber: ep,
+        ...(runtime ? { runtimeMin: runtime } : {}),
+      })
+      .catch(() => {});
+  }
+
+  async function markSeason(
+    season: number,
+    episodes: { episodeNumber: number; runtimeMin?: number }[]
+  ) {
+    setWatched((prev) => {
+      const n = new Set(prev);
+      episodes.forEach((e) => n.add(epKey(season, e.episodeNumber)));
+      return n;
+    });
+    await api
+      .post("/episodes/season", { tmdbShowId: tmdbId, seasonNumber: season, episodes })
+      .catch(() => {});
+  }
+
+  async function unmarkSeason(season: number) {
+    const toRemove: number[] = [];
+    setWatched((prev) => {
+      const n = new Set(prev);
+      [...prev]
+        .filter((k) => k.startsWith(`${season}-`))
+        .forEach((k) => {
+          toRemove.push(Number(k.split("-")[1]));
+          n.delete(k);
+        });
+      return n;
+    });
+    for (const ep of toRemove) {
+      await api
+        .post("/episodes/toggle", { tmdbShowId: tmdbId, seasonNumber: season, episodeNumber: ep })
+        .catch(() => {});
+    }
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator color={colors.violet} />
+      </View>
+    );
+  }
+  if (!data) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.error}>Impossible de charger cette fiche.</Text>
+        <Pressable onPress={() => router.back()} style={styles.backInline}>
+          <Text style={styles.backInlineText}>Retour</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  const title = data.title ?? data.name ?? "";
+  const year = (data.release_date ?? data.first_air_date ?? "").slice(0, 4);
+  const backdrop = tmdbImage(data.backdrop_path, "w780");
+  const seasons = (data.seasons ?? []).filter((s) => s.episode_count > 0);
+
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Fiche {type} #{id}</Text>
-    </ScrollView>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* Bannière */}
+        <View style={styles.banner}>
+          {backdrop && (
+            <Image source={{ uri: backdrop }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          )}
+          <LinearGradient
+            colors={["rgba(15,17,21,0.2)", "rgba(15,17,21,0.65)", colors.bg]}
+            style={StyleSheet.absoluteFill}
+          />
+          <Pressable style={styles.back} onPress={() => router.back()} hitSlop={10}>
+            <ArrowLeft size={22} color="#fff" />
+          </Pressable>
+          <View style={styles.bannerText}>
+            <Text style={styles.title}>{title}</Text>
+            <View style={styles.metaRow}>
+              {!!year && <Text style={styles.meta}>{year}</Text>}
+              <View style={styles.voteBadge}>
+                <Star size={12} color={colors.violet} fill={colors.violet} />
+                <Text style={styles.voteText}>{data.vote_average.toFixed(1)}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.body}>
+          {/* Genres */}
+          {data.genres.length > 0 && (
+            <View style={styles.genres}>
+              {data.genres.map((g) => (
+                <View key={g.id} style={styles.genre}>
+                  <Text style={styles.genreText}>{g.name}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Statut (dont "À voir" = plus tard) */}
+          <StatusButtons mediaType={mediaType} status={status} onSelect={selectStatus} />
+
+          {/* Note perso */}
+          <View style={styles.rateBlock}>
+            <Text style={styles.sectionLabel}>Ma note</Text>
+            <StarRating value={myScore} onChange={rate} />
+          </View>
+
+          {/* Synopsis */}
+          {!!data.overview && (
+            <>
+              <Text style={styles.sectionLabel}>Synopsis</Text>
+              <Text style={styles.overview}>{data.overview}</Text>
+            </>
+          )}
+
+          {/* Saisons (séries) */}
+          {mediaType === "TV" && seasons.length > 0 && (
+            <>
+              <Text style={[styles.sectionLabel, { marginTop: 22 }]}>Saisons</Text>
+              <SeasonList
+                showId={tmdbId}
+                seasons={seasons}
+                watched={watched}
+                onToggle={toggleEpisode}
+                onMarkSeason={markSeason}
+                onUnmarkSeason={unmarkSeason}
+              />
+            </>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.bg, padding: 16 },
-  title: { fontFamily: fonts.heading, fontSize: 22, color: colors.text },
+  container: { flex: 1, backgroundColor: colors.bg },
+  centered: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", gap: 14 },
+  error: { fontFamily: fonts.body, fontSize: 14, color: colors.dim },
+  backInline: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: radius.md, backgroundColor: colors.surface },
+  backInlineText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.violetPastel },
+
+  banner: { height: 300, justifyContent: "flex-end", backgroundColor: colors.surface },
+  back: {
+    position: "absolute",
+    top: 44,
+    left: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+    backgroundColor: "rgba(15,17,21,0.55)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bannerText: { padding: 16 },
+  title: { fontFamily: fonts.heading, fontSize: 26, color: "#fff" },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 8 },
+  meta: { fontFamily: fonts.bodyMedium, fontSize: 13, color: "#E5E7EB" },
+  voteBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(15,17,21,0.6)",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  voteText: { fontFamily: fonts.headingSemi, fontSize: 12, color: "#fff" },
+
+  body: { padding: 16 },
+  genres: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 },
+  genre: {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: colors.violetSoft,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  genreText: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.violetPastel },
+
+  rateBlock: { marginBottom: 18, alignItems: "flex-start", gap: 10 },
+  sectionLabel: { fontFamily: fonts.heading, fontSize: 14, color: colors.text, marginBottom: 8 },
+  overview: { fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: colors.dim, marginBottom: 4 },
 });
