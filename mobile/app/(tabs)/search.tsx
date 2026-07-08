@@ -143,7 +143,7 @@ export default function SearchScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 16 },
+  header: { paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 8 },
   title: { fontFamily: fonts.heading, fontSize: 24, color: colors.text, marginBottom: 16 },
   searchBar: {
     flexDirection: "row",
