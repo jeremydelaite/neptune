@@ -147,6 +147,47 @@ export default function MediaDetailScreen() {
     }
   }
 
+  // Marque comme vus tous les épisodes jusqu'à (targetSeason, maxEp) inclus.
+  // maxEp = null => saison entière. Inclut les saisons régulières antérieures.
+  async function markUpTo(targetSeason: number, maxEp: number | null) {
+    const targets = (data?.seasons ?? []).filter(
+      (s) => s.episode_count > 0 && s.season_number >= 1 && s.season_number <= targetSeason
+    );
+    const addKeys: string[] = [];
+    for (const s of targets) {
+      let eps: { episode_number: number; runtime: number | null }[];
+      try {
+        const res = await api.get<{ episodes: { episode_number: number; runtime: number | null }[] }>(
+          `/tmdb/tv/${tmdbId}/season/${s.season_number}`
+        );
+        eps = res.episodes;
+      } catch {
+        continue;
+      }
+      const filtered =
+        s.season_number === targetSeason && maxEp != null
+          ? eps.filter((e) => e.episode_number <= maxEp)
+          : eps;
+      if (filtered.length === 0) continue;
+      await api
+        .post("/episodes/season", {
+          tmdbShowId: tmdbId,
+          seasonNumber: s.season_number,
+          episodes: filtered.map((e) => ({
+            episodeNumber: e.episode_number,
+            runtimeMin: e.runtime ?? undefined,
+          })),
+        })
+        .catch(() => {});
+      filtered.forEach((e) => addKeys.push(epKey(s.season_number, e.episode_number)));
+    }
+    setWatched((prev) => {
+      const n = new Set(prev);
+      addKeys.forEach((k) => n.add(k));
+      return n;
+    });
+  }
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -237,6 +278,7 @@ export default function MediaDetailScreen() {
                 onToggle={toggleEpisode}
                 onMarkSeason={markSeason}
                 onUnmarkSeason={unmarkSeason}
+                onMarkUpTo={markUpTo}
               />
             </>
           )}

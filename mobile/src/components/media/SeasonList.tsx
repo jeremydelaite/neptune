@@ -3,6 +3,7 @@ import { useState } from "react";
 import { View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
 import { ChevronDown, ChevronRight, Check } from "lucide-react-native";
 import { api } from "../../services/api";
+import { ConfirmModal } from "../ui/ConfirmModal";
 import { colors } from "../../theme/colors";
 import { fonts, radius } from "../../theme/typography";
 
@@ -26,14 +27,28 @@ interface Props {
   onToggle: (season: number, ep: number, runtime: number | null) => void;
   onMarkSeason: (season: number, episodes: { episodeNumber: number; runtimeMin?: number }[]) => void;
   onUnmarkSeason: (season: number) => void;
+  onMarkUpTo: (season: number, ep: number | null) => void;
 }
+
+type Pending =
+  | { kind: "episode"; season: number; ep: number; runtime: number | null }
+  | { kind: "season"; season: number };
 
 export const epKey = (s: number, e: number) => `${s}-${e}`;
 
-export function SeasonList({ showId, seasons, watched, onToggle, onMarkSeason, onUnmarkSeason }: Props) {
+export function SeasonList({
+  showId,
+  seasons,
+  watched,
+  onToggle,
+  onMarkSeason,
+  onUnmarkSeason,
+  onMarkUpTo,
+}: Props) {
   const [open, setOpen] = useState<number | null>(null);
   const [episodes, setEpisodes] = useState<Record<number, Episode[]>>({});
   const [loading, setLoading] = useState<number | null>(null);
+  const [pending, setPending] = useState<Pending | null>(null);
 
   async function fetchSeason(season: number): Promise<Episode[]> {
     if (episodes[season]) return episodes[season];
@@ -41,6 +56,18 @@ export function SeasonList({ showId, seasons, watched, onToggle, onMarkSeason, o
     setEpisodes((prev) => ({ ...prev, [season]: data.episodes }));
     return data.episodes;
   }
+
+  const watchedCountOf = (season: number) =>
+    [...watched].filter((k) => k.startsWith(`${season}-`)).length;
+
+  // Une saison régulière antérieure n'est pas complète ?
+  const hasEarlierUnwatchedSeasons = (season: number) =>
+    seasons.some(
+      (s) =>
+        s.season_number >= 1 &&
+        s.season_number < season &&
+        watchedCountOf(s.season_number) < s.episode_count
+    );
 
   async function toggleOpen(season: number) {
     if (open === season) {
@@ -60,28 +87,63 @@ export function SeasonList({ showId, seasons, watched, onToggle, onMarkSeason, o
     }
   }
 
+  function handleEpisodePress(season: number, e: Episode, list: Episode[]) {
+    const key = epKey(season, e.episode_number);
+    if (watched.has(key)) {
+      onToggle(season, e.episode_number, e.runtime); // décochage : pas de modale
+      return;
+    }
+    const earlierSame = list.some(
+      (x) => x.episode_number < e.episode_number && !watched.has(epKey(season, x.episode_number))
+    );
+    if (earlierSame || hasEarlierUnwatchedSeasons(season)) {
+      setPending({ kind: "episode", season, ep: e.episode_number, runtime: e.runtime });
+    } else {
+      onToggle(season, e.episode_number, e.runtime);
+    }
+  }
+
   async function handleMarkAll(season: number, total: number, watchedCount: number) {
-    const eps = await fetchSeason(season).catch(() => [] as Episode[]);
-    if (watchedCount >= total && total > 0) {
+    if (total > 0 && watchedCount >= total) {
       onUnmarkSeason(season);
+      return;
+    }
+    const eps = await fetchSeason(season).catch(() => [] as Episode[]);
+    if (hasEarlierUnwatchedSeasons(season)) {
+      setPending({ kind: "season", season });
     } else {
       onMarkSeason(
         season,
-        eps.map((e) => ({
-          episodeNumber: e.episode_number,
-          runtimeMin: e.runtime ?? undefined,
-        }))
+        eps.map((e) => ({ episodeNumber: e.episode_number, runtimeMin: e.runtime ?? undefined }))
       );
     }
+  }
+
+  function confirmMarkPrevious() {
+    if (!pending) return;
+    onMarkUpTo(pending.season, pending.kind === "episode" ? pending.ep : null);
+    setPending(null);
+  }
+
+  async function confirmJustThis() {
+    if (!pending) return;
+    if (pending.kind === "episode") {
+      onToggle(pending.season, pending.ep, pending.runtime);
+    } else {
+      const eps = await fetchSeason(pending.season).catch(() => [] as Episode[]);
+      onMarkSeason(
+        pending.season,
+        eps.map((e) => ({ episodeNumber: e.episode_number, runtimeMin: e.runtime ?? undefined }))
+      );
+    }
+    setPending(null);
   }
 
   return (
     <View style={{ gap: 8 }}>
       {seasons.map((s) => {
         const list = episodes[s.season_number];
-        const watchedCount = [...watched].filter((k) =>
-          k.startsWith(`${s.season_number}-`)
-        ).length;
+        const watchedCount = watchedCountOf(s.season_number);
         const total = s.episode_count;
         const allWatched = total > 0 && watchedCount >= total;
         const isOpen = open === s.season_number;
@@ -122,7 +184,7 @@ export function SeasonList({ showId, seasons, watched, onToggle, onMarkSeason, o
                       <Pressable
                         key={e.id}
                         style={styles.epRow}
-                        onPress={() => onToggle(s.season_number, e.episode_number, e.runtime)}
+                        onPress={() => handleEpisodePress(s.season_number, e, list ?? [])}
                       >
                         <View style={[styles.check, on && styles.checkOn]}>
                           {on && <Check size={13} color="#fff" strokeWidth={3} />}
@@ -142,6 +204,24 @@ export function SeasonList({ showId, seasons, watched, onToggle, onMarkSeason, o
           </View>
         );
       })}
+
+      <ConfirmModal
+        visible={pending !== null}
+        title={
+          pending?.kind === "season"
+            ? "Marquer les saisons précédentes ?"
+            : "Marquer les épisodes précédents ?"
+        }
+        message={
+          pending?.kind === "season"
+            ? "Veux-tu aussi marquer comme vues toutes les saisons précédentes ?"
+            : "Veux-tu aussi marquer comme vus tous les épisodes précédents (y compris les saisons antérieures) ?"
+        }
+        confirmLabel="Tout marquer"
+        cancelLabel={pending?.kind === "season" ? "Juste cette saison" : "Juste celui-ci"}
+        onConfirm={confirmMarkPrevious}
+        onCancel={confirmJustThis}
+      />
     </View>
   );
 }
