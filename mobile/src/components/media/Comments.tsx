@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Trash2, Send, Pencil, Check, X, Flag } from "lucide-react-native";
+import { ConfirmModal } from "../ui/ConfirmModal";
 import { api } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import { colors } from "../../theme/colors";
@@ -44,6 +45,7 @@ export function Comments({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [reported, setReported] = useState<Set<string>>(new Set());
+  const [confirmReport, setConfirmReport] = useState<string | null>(null);
 
   const path = mediaType.toLowerCase();
   const myComment = comments.find((c) => c.userId === user?.id);
@@ -100,7 +102,17 @@ export function Comments({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
 
   async function report(id: string) {
     setReported((prev) => new Set(prev).add(id));
+    setConfirmReport(null);
     await api.post(`/comments/${id}/report`, {}).catch(() => {});
+  }
+
+  async function unreport(id: string) {
+    setReported((prev) => {
+      const n = new Set(prev);
+      n.delete(id);
+      return n;
+    });
+    await api.delete(`/comments/${id}/report`).catch(() => {});
   }
 
   return (
@@ -182,8 +194,7 @@ export function Comments({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
               </View>
               {!mine && (
                 <Pressable
-                  onPress={() => report(c.id)}
-                  disabled={reported.has(c.id)}
+                  onPress={() => (reported.has(c.id) ? unreport(c.id) : setConfirmReport(c.id))}
                   hitSlop={8}
                   style={styles.actionBtn}
                 >
@@ -215,6 +226,16 @@ export function Comments({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
           );
         })
       )}
+
+      <ConfirmModal
+        visible={confirmReport !== null}
+        title="Signaler ce commentaire ?"
+        message="Il sera transmis à la modération. Tu pourras retirer ton signalement en recliquant sur le drapeau."
+        confirmLabel="Signaler"
+        cancelLabel="Annuler"
+        onConfirm={() => confirmReport && report(confirmReport)}
+        onCancel={() => setConfirmReport(null)}
+      />
     </View>
   );
 }

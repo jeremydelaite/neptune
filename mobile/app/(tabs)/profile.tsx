@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2 } from "lucide-react-native";
+import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2 } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
@@ -105,6 +105,11 @@ export default function ProfileScreen() {
   async function deleteReported(id: string) {
     setReported((prev) => prev.filter((c) => c.id !== id));
     await api.delete(`/comments/${id}`).catch(() => {});
+  }
+
+  async function dismissReported(id: string) {
+    setReported((prev) => prev.filter((c) => c.id !== id));
+    await api.post(`/comments/${id}/dismiss`, {}).catch(() => {});
   }
 
   async function loadMoreActivity() {
@@ -265,9 +270,18 @@ export default function ProfileScreen() {
                       {c.content}
                     </Text>
                   </View>
-                  <Pressable onPress={() => deleteReported(c.id)} hitSlop={8} style={{ padding: 4 }}>
-                    <Trash2 size={16} color={colors.danger} />
-                  </Pressable>
+                  <View style={{ flexDirection: "row", gap: 6 }}>
+                    <Pressable
+                      onPress={() => dismissReported(c.id)}
+                      hitSlop={8}
+                      style={{ padding: 4 }}
+                    >
+                      <CheckCircle2 size={16} color={colors.accentPastel} />
+                    </Pressable>
+                    <Pressable onPress={() => deleteReported(c.id)} hitSlop={8} style={{ padding: 4 }}>
+                      <Trash2 size={16} color={colors.danger} />
+                    </Pressable>
+                  </View>
                 </View>
               ))
             )}

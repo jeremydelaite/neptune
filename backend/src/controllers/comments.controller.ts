@@ -106,6 +106,19 @@ export async function reportComment(req: AuthRequest, res: Response) {
   res.status(201).json({ reported: true });
 }
 
+// DELETE /comments/:id/report — retire son propre signalement
+export async function unreportComment(req: AuthRequest, res: Response) {
+  await prisma.report.deleteMany({ where: { commentId: req.params.id, userId: req.userId! } });
+  res.status(204).end();
+}
+
+// POST /comments/:id/dismiss — admin : rejette les signalements (garde le commentaire)
+export async function dismissReports(req: AuthRequest, res: Response) {
+  if (!(await isAdmin(req.userId!))) return res.status(403).json({ error: "Accès refusé" });
+  await prisma.report.deleteMany({ where: { commentId: req.params.id } });
+  res.status(204).end();
+}
+
 // DELETE /comments/:id — son propre commentaire, ou n'importe lequel si admin
 export async function deleteComment(req: AuthRequest, res: Response) {
   const admin = await isAdmin(req.userId!);
