@@ -16,6 +16,7 @@ import { api, tmdbImage } from "../../../src/services/api";
 import { StatusButtons } from "../../../src/components/media/StatusButtons";
 import { StarRating } from "../../../src/components/ui/StarRating";
 import { SeasonList, epKey, type TmdbSeason } from "../../../src/components/media/SeasonList";
+import { Comments } from "../../../src/components/media/Comments";
 import { colors } from "../../../src/theme/colors";
 import { fonts, radius } from "../../../src/theme/typography";
 import type { MediaType, TrackStatus } from "../../../src/types";
@@ -365,6 +366,9 @@ export default function MediaDetailScreen() {
               />
             </>
           )}
+
+          {/* Commentaires (film ou série) */}
+          <Comments mediaType={mediaType} tmdbId={tmdbId} />
         </View>
       </ScrollView>
     </View>
