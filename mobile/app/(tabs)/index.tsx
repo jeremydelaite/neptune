@@ -19,18 +19,10 @@ const GREETINGS = [
   "Décollage dans 3, 2, 1\u2026",
   "Explore la galaxie de films/séries",
   "Mets le cap sur l'inconnu",
-  "Embarquement immédiat pour ta séance",
-  "Prochaine destination\u00A0: le grand écran",
-  "Ta navette pour d'autres mondes",
-  "Traverse la galaxie, un épisode à la fois",
-  "Neptune, dernière escale avant le binge",
-  "Largue les amarres, la séance commence",
-  "Ce soir, on explore quelle planète\u00A0?",
-  "Une odyssée stellaire t'attend",
-  "Cap sur des galaxies inexplorées",
-  "Ouvre le sas, ta séance t'attend",
-  "Gravite autour de ta prochaine obsession",
   "Plonge dans l'immensité du catalogue",
+  "Gravite autour de ta prochaine obsession",
+  "Cap sur des galaxies inexplorées",
+  "Une odyssée stellaire t'attend",
 ];
 const pickGreeting = () => GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
 
