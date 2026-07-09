@@ -13,7 +13,7 @@ export function StarRating({ value, onChange, size = 28 }: Props) {
   return (
     <View style={styles.row}>
       {[1, 2, 3, 4, 5].map((i) => (
-        <Pressable key={i} disabled={!onChange} onPress={() => onChange?.(i)} hitSlop={6}>
+        <Pressable key={i} disabled={!onChange} onPress={() => onChange?.(i === value ? 0 : i)} hitSlop={6}>
           <Star
             size={size}
             color={i <= value ? colors.accent : "#4B5262"}

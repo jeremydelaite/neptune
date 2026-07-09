@@ -69,6 +69,8 @@ export default function SearchScreen() {
           const base = append ? prev : [];
           const seen = new Set(base.map((m) => m.id));
           const merged = [...base, ...data.results.filter((m) => !seen.has(m.id))];
+          // Les plus populaires d'abord (évite les films/séries B au titre exact)
+          merged.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
           cache.current.set(cacheKey(t, q), {
             results: merged,
             page: data.page,

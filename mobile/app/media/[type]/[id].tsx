@@ -148,7 +148,11 @@ export default function MediaDetailScreen() {
 
   async function rate(score: number) {
     setMyScore(score);
-    await api.put("/ratings", { tmdbId, mediaType, score }).catch(() => {});
+    if (score === 0) {
+      await api.delete(`/ratings/${mediaType}/${tmdbId}`).catch(() => {});
+    } else {
+      await api.put("/ratings", { tmdbId, mediaType, score }).catch(() => {});
+    }
   }
 
   function toggleEpisode(season: number, ep: number, runtime: number | null) {

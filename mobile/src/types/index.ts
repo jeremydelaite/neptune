@@ -11,6 +11,7 @@ export interface TmdbMedia {
   release_date?: string;
   first_air_date?: string;
   vote_average: number;
+  popularity?: number;
   overview: string;
   genre_ids?: number[];
 }

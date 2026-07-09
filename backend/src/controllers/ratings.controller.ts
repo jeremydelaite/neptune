@@ -40,3 +40,15 @@ export async function getRating(req: AuthRequest, res: Response) {
   ]);
   res.json({ myScore: mine?.score ?? null, average: avg._avg.score, count: avg._count });
 }
+
+// DELETE /ratings/:mediaType/:tmdbId — retire sa note
+export async function deleteRating(req: AuthRequest, res: Response) {
+  await prisma.rating.deleteMany({
+    where: {
+      userId: req.userId!,
+      tmdbId: Number(req.params.tmdbId),
+      mediaType: req.params.mediaType.toUpperCase() as never,
+    },
+  });
+  res.status(204).end();
+}
