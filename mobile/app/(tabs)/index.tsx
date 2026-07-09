@@ -12,32 +12,25 @@ interface TmdbList {
   results: TmdbMedia[];
 }
 
-// Accroches de l'Accueil — une au hasard à chaque ouverture
+// Accroches de l'Accueil — une au hasard à chaque ouverture (thème spatial / Neptune)
 const GREETINGS = [
-  // Neptune
-  "Bienvenue à bord de Neptune",
-  "Neptune veille sur tes soirées",
-  "Ta planète des séries t'attend",
-  "Plonge dans les profondeurs de Neptune",
-  "Neptune a repéré des pépites pour toi",
-  // Espace
   "Cap sur ta prochaine séance",
   "En orbite\u00A0: on vise quoi\u00A0?",
   "Décollage dans 3, 2, 1\u2026",
-  "Explore ta galaxie de films",
-  "Une nouvelle constellation à découvrir",
-  "L'espace est vaste, ta watchlist aussi",
+  "Explore la galaxie de films/séries",
   "Mets le cap sur l'inconnu",
-  // Cinéma / séries
-  "Qu'est-ce qu'on regarde\u00A0?",
-  "Ce soir, on regarde quoi\u00A0?",
-  "Prêt pour une séance\u00A0?",
-  "Ta prochaine obsession est ici",
-  "Trouve ta pépite du soir",
-  "Popcorn prêt\u00A0? À toi de jouer",
-  "Un nouvel épisode t'attend",
-  "Lumières éteintes, action\u00A0!",
-  "Ta soirée binge commence ici",
+  "Embarquement immédiat pour ta séance",
+  "Prochaine destination\u00A0: le grand écran",
+  "Ta navette pour d'autres mondes",
+  "Traverse la galaxie, un épisode à la fois",
+  "Neptune, dernière escale avant le binge",
+  "Largue les amarres, la séance commence",
+  "Ce soir, on explore quelle planète\u00A0?",
+  "Une odyssée stellaire t'attend",
+  "Cap sur des galaxies inexplorées",
+  "Ouvre le sas, ta séance t'attend",
+  "Gravite autour de ta prochaine obsession",
+  "Plonge dans l'immensité du catalogue",
 ];
 const pickGreeting = () => GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
 
