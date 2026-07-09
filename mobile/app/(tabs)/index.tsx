@@ -14,14 +14,30 @@ interface TmdbList {
 
 // Accroches de l'Accueil — une au hasard à chaque ouverture
 const GREETINGS = [
+  // Neptune
+  "Bienvenue à bord de Neptune",
+  "Neptune veille sur tes soirées",
+  "Ta planète des séries t'attend",
+  "Plonge dans les profondeurs de Neptune",
+  "Neptune a repéré des pépites pour toi",
+  // Espace
+  "Cap sur ta prochaine séance",
+  "En orbite\u00A0: on vise quoi\u00A0?",
+  "Décollage dans 3, 2, 1\u2026",
+  "Explore ta galaxie de films",
+  "Une nouvelle constellation à découvrir",
+  "L'espace est vaste, ta watchlist aussi",
+  "Mets le cap sur l'inconnu",
+  // Cinéma / séries
   "Qu'est-ce qu'on regarde\u00A0?",
   "Ce soir, on regarde quoi\u00A0?",
   "Prêt pour une séance\u00A0?",
-  "Cap sur ta prochaine séance",
-  "Explore ta galaxie de films",
   "Ta prochaine obsession est ici",
   "Trouve ta pépite du soir",
-  "En orbite. On vise quoi\u00A0?",
+  "Popcorn prêt\u00A0? À toi de jouer",
+  "Un nouvel épisode t'attend",
+  "Lumières éteintes, action\u00A0!",
+  "Ta soirée binge commence ici",
 ];
 const pickGreeting = () => GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
 
