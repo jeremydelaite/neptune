@@ -39,7 +39,7 @@ export function PosterCard({ media, mediaType, width = 106, posterSize = "w342" 
           colors={["rgba(15,17,21,0)", "rgba(15,17,21,0.9)"]}
           style={StyleSheet.absoluteFill}
         />
-        <View style={[styles.badge, mediaType === "TV" && { backgroundColor: colors.violet }]}>
+        <View style={[styles.badge, mediaType === "TV" && { backgroundColor: colors.accent }]}>
           <Text style={styles.badgeText}>{mediaType === "TV" ? "SÉRIE" : "FILM"}</Text>
         </View>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>

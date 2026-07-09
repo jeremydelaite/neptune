@@ -46,7 +46,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator color={colors.violet} />
+          <ActivityIndicator color={colors.accent} />
           <Text style={styles.hint}>Chargement…</Text>
         </View>
       ) : error ? (
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 11,
     borderRadius: radius.md,
-    backgroundColor: colors.violet,
+    backgroundColor: colors.accent,
   },
   retryText: { fontFamily: fonts.headingSemi, fontSize: 13, color: "#fff" },
 });

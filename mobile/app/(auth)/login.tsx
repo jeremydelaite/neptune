@@ -59,7 +59,7 @@ export default function LoginScreen() {
       </Pressable>
 
       <Link href="/(auth)/register" style={styles.link}>
-        Pas encore de compte ? <Text style={{ color: colors.violetPastel }}>Créer un compte</Text>
+        Pas encore de compte ? <Text style={{ color: colors.accentPastel }}>Créer un compte</Text>
       </Link>
     </View>
   );
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   },
   error: { color: "#F87171", fontSize: 12, marginBottom: 10, textAlign: "center", fontFamily: fonts.body },
   button: {
-    backgroundColor: colors.violet, borderRadius: radius.md,
+    backgroundColor: colors.accent, borderRadius: radius.md,
     padding: 15, alignItems: "center", marginTop: 6,
   },
   buttonText: { color: "#fff", fontFamily: fonts.headingSemi, fontSize: 15 },

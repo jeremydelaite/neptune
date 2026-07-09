@@ -141,12 +141,12 @@ export default function SearchScreen() {
         <View style={styles.titleRow}>
           <Text style={styles.title}>Recherche</Text>
           {loading && results.length > 0 && (
-            <ActivityIndicator size="small" color={colors.violetPastel} />
+            <ActivityIndicator size="small" color={colors.accentPastel} />
           )}
         </View>
 
         <View style={[styles.searchBar, focused && styles.searchBarFocused]}>
-          <Search size={18} color={focused ? colors.violetPastel : colors.dim} />
+          <Search size={18} color={focused ? colors.accentPastel : colors.dim} />
           <TextInput
             style={[styles.input, noOutline]}
             placeholder={tab === "MOVIE" ? "Rechercher un film…" : "Rechercher une série…"}
@@ -185,7 +185,7 @@ export default function SearchScreen() {
       </View>
 
       {showInitialSpinner ? (
-        <ActivityIndicator style={styles.center} color={colors.violet} />
+        <ActivityIndicator style={styles.center} color={colors.accent} />
       ) : (
         <FlatList
           data={results}
@@ -211,7 +211,7 @@ export default function SearchScreen() {
           }
           ListFooterComponent={
             loadingMore ? (
-              <ActivityIndicator style={{ marginVertical: 16 }} color={colors.violet} />
+              <ActivityIndicator style={{ marginVertical: 16 }} color={colors.accent} />
             ) : null
           }
         />
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     height: 46,
   },
-  searchBarFocused: { borderColor: colors.violet },
+  searchBarFocused: { borderColor: colors.accent },
   input: {
     flex: 1,
     color: colors.text,
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
   },
-  tabActive: { backgroundColor: colors.violet, borderColor: colors.violet },
+  tabActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   tabText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim },
   tabTextActive: { color: "#fff" },
   center: { marginTop: 40 },

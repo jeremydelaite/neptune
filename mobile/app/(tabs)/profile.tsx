@@ -94,7 +94,7 @@ export default function ProfileScreen() {
         </View>
 
         {loading ? (
-          <ActivityIndicator style={{ marginTop: 40 }} color={colors.violet} />
+          <ActivityIndicator style={{ marginTop: 40 }} color={colors.accent} />
         ) : !stats ? (
           <Text style={styles.error}>Impossible de charger les statistiques.</Text>
         ) : (
@@ -102,17 +102,17 @@ export default function ProfileScreen() {
             {/* Cartes chiffres clés */}
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <Film size={18} color={colors.violetPastel} />
+                <Film size={18} color={colors.accentPastel} />
                 <Text style={styles.statValue}>{stats.moviesSeen}</Text>
                 <Text style={styles.statLabel}>Films vus</Text>
               </View>
               <View style={styles.statCard}>
-                <Tv size={18} color={colors.violetPastel} />
+                <Tv size={18} color={colors.accentPastel} />
                 <Text style={styles.statValue}>{stats.episodesSeen}</Text>
                 <Text style={styles.statLabel}>Épisodes</Text>
               </View>
               <View style={styles.statCard}>
-                <Clock size={18} color={colors.violetPastel} />
+                <Clock size={18} color={colors.accentPastel} />
                 <Text style={styles.statValue}>{formatTime(stats.seriesTimeMin)}</Text>
                 <Text style={styles.statLabel}>De séries</Text>
               </View>
@@ -155,9 +155,9 @@ export default function ProfileScreen() {
                   >
                     <View style={styles.actIcon}>
                       {it.kind === "rating" ? (
-                        <Star size={15} color={colors.violet} fill={colors.violet} />
+                        <Star size={15} color={colors.accent} fill={colors.accent} />
                       ) : (
-                        <MessageSquare size={15} color={colors.violetPastel} />
+                        <MessageSquare size={15} color={colors.accentPastel} />
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
@@ -207,13 +207,13 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 999,
-    backgroundColor: colors.violetSoft,
+    backgroundColor: colors.accentSoft,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: colors.violet,
+    borderColor: colors.accent,
   },
-  avatarText: { fontFamily: fonts.heading, fontSize: 22, color: colors.violetPastel },
+  avatarText: { fontFamily: fonts.heading, fontSize: 22, color: colors.accentPastel },
   username: { fontFamily: fonts.heading, fontSize: 20, color: colors.text },
   email: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, marginTop: 2 },
 
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface2,
     overflow: "hidden",
   },
-  ratingFill: { height: "100%", borderRadius: 99, backgroundColor: colors.violet },
+  ratingFill: { height: "100%", borderRadius: 99, backgroundColor: colors.accent },
   ratingCount: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.text, width: 24, textAlign: "right" },
 
   actRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   actTitle: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.text },
-  actStars: { fontSize: 12, color: colors.violet, marginTop: 2 },
+  actStars: { fontSize: 12, color: colors.accent, marginTop: 2 },
   actStarsEmpty: { color: "#4B5262" },
   actComment: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginTop: 2 },
   actDate: { fontFamily: fonts.body, fontSize: 11, color: colors.dim },

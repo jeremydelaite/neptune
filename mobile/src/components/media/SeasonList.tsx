@@ -176,7 +176,7 @@ export function SeasonList({
             {isOpen && (
               <View style={styles.epList}>
                 {loading === s.season_number ? (
-                  <ActivityIndicator color={colors.violet} style={{ marginVertical: 12 }} />
+                  <ActivityIndicator color={colors.accent} style={{ marginVertical: 12 }} />
                 ) : (
                   (list ?? []).map((e) => {
                     const on = watched.has(epKey(s.season_number, e.episode_number));
@@ -242,10 +242,10 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: colors.violet,
+    borderColor: colors.accent,
   },
   markBtnActive: { borderColor: colors.dangerLine, backgroundColor: colors.dangerSoft },
-  markText: { fontFamily: fonts.headingSemi, fontSize: 11, color: colors.violetPastel },
+  markText: { fontFamily: fonts.headingSemi, fontSize: 11, color: colors.accentPastel },
   markTextActive: { color: colors.danger },
   epList: { borderTopWidth: 1, borderTopColor: colors.line, paddingHorizontal: 14, paddingBottom: 6 },
   epRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 9 },
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  checkOn: { backgroundColor: colors.violet, borderColor: colors.violet },
+  checkOn: { backgroundColor: colors.accent, borderColor: colors.accent },
   epNum: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.dim, minWidth: 34, textAlign: "right" },
   epName: { fontFamily: fonts.body, fontSize: 13, color: colors.text, flex: 1 },
 });

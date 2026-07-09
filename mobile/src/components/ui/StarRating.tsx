@@ -16,8 +16,8 @@ export function StarRating({ value, onChange, size = 28 }: Props) {
         <Pressable key={i} disabled={!onChange} onPress={() => onChange?.(i)} hitSlop={6}>
           <Star
             size={size}
-            color={i <= value ? colors.violet : "#4B5262"}
-            fill={i <= value ? colors.violet : "transparent"}
+            color={i <= value ? colors.accent : "#4B5262"}
+            fill={i <= value ? colors.accent : "transparent"}
             strokeWidth={1.6}
           />
         </Pressable>

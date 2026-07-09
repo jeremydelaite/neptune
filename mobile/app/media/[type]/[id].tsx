@@ -200,7 +200,7 @@ export default function MediaDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color={colors.violet} />
+        <ActivityIndicator color={colors.accent} />
       </View>
     );
   }
@@ -240,7 +240,7 @@ export default function MediaDetailScreen() {
             <View style={styles.metaRow}>
               {!!year && <Text style={styles.meta}>{year}</Text>}
               <View style={styles.voteBadge}>
-                <Star size={12} color={colors.violet} fill={colors.violet} />
+                <Star size={12} color={colors.accent} fill={colors.accent} />
                 <Text style={styles.voteText}>{data.vote_average.toFixed(1)}</Text>
               </View>
             </View>
@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   centered: { flex: 1, backgroundColor: colors.bg, alignItems: "center", justifyContent: "center", gap: 14 },
   error: { fontFamily: fonts.body, fontSize: 14, color: colors.dim },
   backInline: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: radius.md, backgroundColor: colors.surface },
-  backInlineText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.violetPastel },
+  backInlineText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.accentPastel },
 
   banner: { height: 300, justifyContent: "flex-end", backgroundColor: colors.surface },
   back: {
@@ -337,11 +337,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11,
     paddingVertical: 5,
     borderRadius: 999,
-    backgroundColor: colors.violetSoft,
+    backgroundColor: colors.accentSoft,
     borderWidth: 1,
     borderColor: colors.line,
   },
-  genreText: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.violetPastel },
+  genreText: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.accentPastel },
 
   rateBlock: { marginBottom: 18, alignItems: "flex-start", gap: 10 },
   sectionLabel: { fontFamily: fonts.heading, fontSize: 14, color: colors.text, marginBottom: 8 },

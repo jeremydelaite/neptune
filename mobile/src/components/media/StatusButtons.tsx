@@ -41,7 +41,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm, borderWidth: 1,
     borderColor: colors.line, backgroundColor: colors.surface,
   },
-  btnActive: { borderColor: colors.violet, backgroundColor: colors.violet },
+  btnActive: { borderColor: colors.accent, backgroundColor: colors.accent },
   label: { fontFamily: fonts.headingSemi, fontSize: 12, color: colors.dim },
   labelActive: { color: "#fff" },
 });

@@ -65,6 +65,6 @@ const styles = StyleSheet.create({
   btn: { flex: 1, paddingVertical: 12, borderRadius: radius.md, alignItems: "center" },
   btnGhost: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.line },
   btnGhostText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.text },
-  btnPrimary: { backgroundColor: colors.violet },
+  btnPrimary: { backgroundColor: colors.accent },
   btnPrimaryText: { fontFamily: fonts.headingSemi, fontSize: 13, color: "#fff" },
 });
