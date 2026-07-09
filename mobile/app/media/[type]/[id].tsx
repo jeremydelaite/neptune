@@ -241,7 +241,7 @@ export default function MediaDetailScreen() {
               {!!year && <Text style={styles.meta}>{year}</Text>}
               <View style={styles.voteBadge}>
                 <Star size={12} color={colors.accent} fill={colors.accent} />
-                <Text style={styles.voteText}>{(data.vote_average / 2).toFixed(1)}\u2009/5</Text>
+                <Text style={styles.voteText}>{`${(data.vote_average / 2).toFixed(1)} /5`}</Text>
               </View>
             </View>
           </View>
