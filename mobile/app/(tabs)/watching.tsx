@@ -1,4 +1,4 @@
-// EN COURS : prochains épisodes des séries suivies (statut WATCHING)
+// EN COURS : séries commencées mais pas terminées (calcul d'après les épisodes vus)
 import { useCallback, useState } from "react";
 import {
   View,
@@ -7,6 +7,7 @@ import {
   Pressable,
   FlatList,
   ActivityIndicator,
+  RefreshControl,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -72,40 +73,64 @@ export default function WatchingScreen() {
   const router = useRouter();
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
+  const [checking, setChecking] = useState<number | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const library = await api.get<LibraryItem[]>("/library?status=WATCHING");
-      const tvItems = library.filter((l) => l.mediaType === "TV");
-      const built = await Promise.all(
-        tvItems.map(async (item) => {
+  // Récupère toutes les séries de la bibliothèque et ne garde que celles
+  // commencées mais pas terminées (peu importe le statut stocké).
+  const fetchShows = useCallback(async () => {
+    const library = await api.get<LibraryItem[]>("/library");
+    const tvItems = library.filter((l) => l.mediaType === "TV");
+    const built = await Promise.all(
+      tvItems.map(async (item) => {
+        try {
           const [detail, eps] = await Promise.all([
             api.get<TvDetail>(`/tmdb/tv/${item.tmdbId}`),
             api.get<WatchedEp[]>(`/episodes/${item.tmdbId}`).catch(() => [] as WatchedEp[]),
           ]);
           return buildShow(detail, eps);
-        })
-      );
-      // À jour en bas, les séries avec un prochain épisode en haut
-      built.sort((a, b) => (a.next ? 0 : 1) - (b.next ? 0 : 1));
-      setShows(built);
+        } catch {
+          return null;
+        }
+      })
+    );
+    const inProgress = built.filter(
+      (s): s is Show => s !== null && s.watchedCount > 0 && s.next !== null
+    );
+    inProgress.sort((a, b) => a.name.localeCompare(b.name));
+    setShows(inProgress);
+  }, []);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    try {
+      await fetchShows();
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchShows]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await fetchShows();
+      setError(false);
+    } catch {
+      setError(true);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchShows]);
 
   useFocusEffect(
     useCallback(() => {
       load();
     }, [load])
   );
-
-  const [checking, setChecking] = useState<number | null>(null);
 
   async function checkNext(show: Show) {
     if (!show.next) return;
@@ -114,7 +139,7 @@ export default function WatchingScreen() {
     await api
       .post("/episodes/toggle", { tmdbShowId: show.id, seasonNumber: season, episodeNumber: ep })
       .catch(() => {});
-    await load(); // recalcule le prochain épisode exact
+    await fetchShows().catch(() => {});
     setChecking(null);
   }
 
@@ -134,13 +159,9 @@ export default function WatchingScreen() {
           <Text style={styles.title} numberOfLines={1}>
             {item.name}
           </Text>
-          {item.next ? (
-            <Text style={styles.next}>
-              Prochain : S{item.next.season}·E{item.next.ep}
-            </Text>
-          ) : (
-            <Text style={styles.upToDate}>À jour ✓</Text>
-          )}
+          <Text style={styles.next}>
+            Prochain : S{item.next!.season}·E{item.next!.ep}
+          </Text>
           <View style={styles.progressRow}>
             <ProgressBar progress={progress} />
           </View>
@@ -149,20 +170,18 @@ export default function WatchingScreen() {
           </Text>
         </View>
 
-        {item.next && (
-          <Pressable
-            style={styles.check}
-            onPress={() => checkNext(item)}
-            disabled={checking === item.id}
-            hitSlop={8}
-          >
-            {checking === item.id ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Check size={18} color="#fff" strokeWidth={3} />
-            )}
-          </Pressable>
-        )}
+        <Pressable
+          style={styles.check}
+          onPress={() => checkNext(item)}
+          disabled={checking === item.id}
+          hitSlop={8}
+        >
+          {checking === item.id ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Check size={18} color="#fff" strokeWidth={3} />
+          )}
+        </Pressable>
       </View>
     );
   };
@@ -187,9 +206,12 @@ export default function WatchingScreen() {
           keyExtractor={(s) => String(s.id)}
           contentContainerStyle={styles.list}
           renderItem={renderItem}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+          }
           ListEmptyComponent={
             <Text style={styles.empty}>
-              Aucune série en cours. Marque une série « En cours » depuis sa fiche pour la suivre ici.
+              Aucune série en cours. Commence à cocher des épisodes d'une série pour la voir apparaître ici.
             </Text>
           }
         />
@@ -218,7 +240,6 @@ const styles = StyleSheet.create({
   info: { flex: 1, gap: 5 },
   title: { fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
   next: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.accentPastel },
-  upToDate: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.dim },
   progressRow: { marginTop: 2 },
   count: { fontFamily: fonts.body, fontSize: 11, color: colors.dim },
   check: {
