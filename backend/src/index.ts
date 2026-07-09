@@ -29,5 +29,15 @@ app.use("/recommendations", requireAuth, recoRoutes);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", app: "neptune-api" }));
 
+// Filet d'erreur global : une requête ratée renvoie 500 au lieu de propager
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error("Erreur non gérée:", err);
+  if (!res.headersSent) res.status(500).json({ error: "Erreur serveur" });
+});
+
+// Empêche une erreur asynchrone isolée de tuer le process (dev)
+process.on("unhandledRejection", (reason) => console.error("unhandledRejection:", reason));
+process.on("uncaughtException", (err) => console.error("uncaughtException:", err));
+
 const PORT = process.env.PORT ?? 3000;
 app.listen(PORT, () => console.log(`🪐 Neptune API sur http://localhost:${PORT}`));
