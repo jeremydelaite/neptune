@@ -46,6 +46,11 @@ export default function MediaDetailScreen() {
   const mediaType: MediaType = type === "tv" ? "TV" : "MOVIE";
   const tmdbId = Number(id);
 
+  const goBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace("/(tabs)");
+  };
+
   const [data, setData] = useState<MediaDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<TrackStatus | null>(null);
@@ -58,10 +63,14 @@ export default function MediaDetailScreen() {
       setLoading(true);
       Promise.all([
         api.get<MediaDetail>(`/tmdb/${type}/${id}`),
-        api.get<{ tmdbId: number; mediaType: MediaType; status: TrackStatus }[]>("/library"),
-        api.get<{ myScore: number | null }>(`/ratings/${type}/${id}`),
+        api
+          .get<{ tmdbId: number; mediaType: MediaType; status: TrackStatus }[]>("/library")
+          .catch(() => [] as { tmdbId: number; mediaType: MediaType; status: TrackStatus }[]),
+        api
+          .get<{ myScore: number | null }>(`/ratings/${type}/${id}`)
+          .catch(() => ({ myScore: null })),
         mediaType === "TV"
-          ? api.get<WatchedEp[]>(`/episodes/${id}`)
+          ? api.get<WatchedEp[]>(`/episodes/${id}`).catch(() => [] as WatchedEp[])
           : Promise.resolve<WatchedEp[]>([]),
       ])
         .then(([detail, library, rating, eps]) => {
@@ -199,7 +208,7 @@ export default function MediaDetailScreen() {
     return (
       <View style={styles.centered}>
         <Text style={styles.error}>Impossible de charger cette fiche.</Text>
-        <Pressable onPress={() => router.back()} style={styles.backInline}>
+        <Pressable onPress={goBack} style={styles.backInline}>
           <Text style={styles.backInlineText}>Retour</Text>
         </Pressable>
       </View>
@@ -223,7 +232,7 @@ export default function MediaDetailScreen() {
             colors={["rgba(15,17,21,0.2)", "rgba(15,17,21,0.65)", colors.bg]}
             style={StyleSheet.absoluteFill}
           />
-          <Pressable style={styles.back} onPress={() => router.back()} hitSlop={10}>
+          <Pressable style={styles.back} onPress={goBack} hitSlop={10}>
             <ArrowLeft size={22} color="#fff" />
           </Pressable>
           <View style={styles.bannerText}>
