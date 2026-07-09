@@ -14,7 +14,6 @@ export async function getStats(req: AuthRequest, res: Response) {
     prisma.watchedEpisode.aggregate({ where: { userId }, _sum: { runtimeMin: true } }),
   ]);
 
-  // Activité par mois (12 derniers mois) — épisodes cochés
   const activity = await prisma.$queryRaw<{ month: string; count: bigint }[]>`
     SELECT to_char(watched_at, 'YYYY-MM') AS month, COUNT(*) AS count
     FROM watched_episodes
@@ -45,16 +44,19 @@ async function tmdbTitle(mediaType: "MOVIE" | "TV", tmdbId: number): Promise<str
   }
 }
 
-// GET /stats/activity — dernières notes et commentaires de l'utilisateur
+// GET /stats/activity?offset&limit — dernières notes et commentaires (paginé)
 export async function getActivity(req: AuthRequest, res: Response) {
   const userId = req.userId!;
+  const offset = Math.max(0, Number(req.query.offset ?? 0));
+  const limit = Math.max(1, Number(req.query.limit ?? 5));
+  const need = offset + limit + 1; // +1 pour savoir s'il reste des éléments
 
   const [ratings, comments] = await Promise.all([
-    prisma.rating.findMany({ where: { userId }, orderBy: { updatedAt: "desc" }, take: 8 }),
-    prisma.comment.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: 8 }),
+    prisma.rating.findMany({ where: { userId }, orderBy: { updatedAt: "desc" }, take: need }),
+    prisma.comment.findMany({ where: { userId }, orderBy: { createdAt: "desc" }, take: need }),
   ]);
 
-  const items = [
+  const merged = [
     ...ratings.map((r) => ({
       kind: "rating" as const,
       tmdbId: r.tmdbId,
@@ -69,18 +71,18 @@ export async function getActivity(req: AuthRequest, res: Response) {
       content: c.content,
       date: c.createdAt,
     })),
-  ]
-    .sort((a, b) => b.date.getTime() - a.date.getTime())
-    .slice(0, 10);
+  ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
-  // Enrichit chaque item du titre TMDB (cache 1h côté service)
+  const hasMore = merged.length > offset + limit;
+  const page = merged.slice(offset, offset + limit);
+
   const enriched = await Promise.all(
-    items.map(async (it) => ({
+    page.map(async (it) => ({
       ...it,
       title: await tmdbTitle(it.mediaType, it.tmdbId),
       date: it.date.toISOString(),
     }))
   );
 
-  res.json({ items: enriched });
+  res.json({ items: enriched, hasMore });
 }

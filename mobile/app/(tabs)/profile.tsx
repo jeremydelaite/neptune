@@ -52,6 +52,8 @@ export default function ProfileScreen() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+  const [hasMoreActivity, setHasMoreActivity] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
@@ -60,12 +62,13 @@ export default function ProfileScreen() {
       setLoading(true);
       Promise.all([
         api.get<Stats>("/stats"),
-        api.get<{ items: ActivityItem[] }>("/stats/activity"),
+        api.get<{ items: ActivityItem[]; hasMore: boolean }>("/stats/activity?offset=0&limit=5"),
       ])
         .then(([s, a]) => {
           if (!active) return;
           setStats(s);
           setActivity(a.items ?? []);
+          setHasMoreActivity(a.hasMore ?? false);
         })
         .catch(() => active && setStats(null))
         .finally(() => active && setLoading(false));
@@ -74,6 +77,21 @@ export default function ProfileScreen() {
       };
     }, [])
   );
+
+  async function loadMoreActivity() {
+    setLoadingMore(true);
+    try {
+      const res = await api.get<{ items: ActivityItem[]; hasMore: boolean }>(
+        `/stats/activity?offset=${activity.length}&limit=10`
+      );
+      setActivity((prev) => [...prev, ...res.items]);
+      setHasMoreActivity(res.hasMore);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   const maxRating = Math.max(1, ...(stats?.ratingsBreakdown.map((r) => r.count) ?? [1]));
 
@@ -181,6 +199,19 @@ export default function ProfileScreen() {
                   </Pressable>
                 ))
               )}
+              {hasMoreActivity && (
+                <Pressable
+                  style={styles.moreBtn}
+                  onPress={loadMoreActivity}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? (
+                    <ActivityIndicator size="small" color={colors.accentPastel} />
+                  ) : (
+                    <Text style={styles.moreText}>Afficher plus</Text>
+                  )}
+                </Pressable>
+              )}
             </View>
           </>
         )}
@@ -269,6 +300,16 @@ const styles = StyleSheet.create({
   actComment: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginTop: 2 },
   actDate: { fontFamily: fonts.body, fontSize: 11, color: colors.dim },
 
+  moreBtn: {
+    marginTop: 12,
+    paddingVertical: 10,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface2,
+    alignItems: "center",
+  },
+  moreText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.accentPastel },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
 
