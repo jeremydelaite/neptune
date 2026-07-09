@@ -42,31 +42,41 @@ interface Show {
   id: number;
   name: string;
   poster: string | null;
-  next: { season: number; ep: number } | null;
+  next: { season: number; ep: number; runtime: number | null } | null;
   watchedCount: number;
   total: number;
 }
 
 const epKey = (s: number, e: number) => `${s}-${e}`;
 
-function buildShow(detail: TvDetail, eps: WatchedEp[]): Show {
-  const watched = new Set(eps.map((e) => epKey(e.seasonNumber, e.episodeNumber)));
+interface BaseInfo {
+  detail: TvDetail;
+  watched: Set<string>;
+  total: number;
+  watchedCount: number;
+  nextSeason: number | null; // 1re saison incomplète
+}
+
+// Comptage d'après les VRAIS numéros d'épisodes vus (numérotation TMDB variable)
+function baseInfo(detail: TvDetail, eps: WatchedEp[]): BaseInfo {
+  const regularEps = eps.filter((e) => e.seasonNumber >= 1);
+  const watched = new Set(regularEps.map((e) => epKey(e.seasonNumber, e.episodeNumber)));
   const regular = detail.seasons
     .filter((s) => s.season_number >= 1 && s.episode_count > 0)
     .sort((a, b) => a.season_number - b.season_number);
 
-  let next: { season: number; ep: number } | null = null;
-  let total = 0;
-  let watchedCount = 0;
+  const total = regular.reduce((n, s) => n + s.episode_count, 0);
+  const watchedCount = watched.size;
+
+  let nextSeason: number | null = null;
   for (const s of regular) {
-    total += s.episode_count;
-    for (let ep = 1; ep <= s.episode_count; ep++) {
-      const seen = watched.has(epKey(s.season_number, ep));
-      if (seen) watchedCount++;
-      else if (!next) next = { season: s.season_number, ep };
+    const w = [...watched].filter((k) => k.startsWith(`${s.season_number}-`)).length;
+    if (w < s.episode_count) {
+      nextSeason = s.season_number;
+      break;
     }
   }
-  return { id: detail.id, name: detail.name, poster: tmdbImage(detail.poster_path, "w185"), next, watchedCount, total };
+  return { detail, watched, total, watchedCount, nextSeason };
 }
 
 export default function WatchingScreen() {
@@ -96,17 +106,47 @@ export default function WatchingScreen() {
             api.get<TvDetail>(`/tmdb/tv/${tmdbId}`),
             api.get<WatchedEp[]>(`/episodes/${tmdbId}`).catch(() => [] as WatchedEp[]),
           ]);
-          return buildShow(detail, eps);
+          return baseInfo(detail, eps);
         } catch {
           return null;
         }
       })
     );
+    // Commencées mais pas terminées
     const inProgress = built.filter(
-      (s): s is Show => s !== null && s.watchedCount > 0 && s.next !== null
+      (b): b is BaseInfo =>
+        b !== null && b.watchedCount > 0 && b.watchedCount < b.total && b.nextSeason !== null
     );
-    inProgress.sort((a, b) => a.name.localeCompare(b.name));
-    setShows(inProgress);
+
+    // Récupère le VRAI prochain épisode (une requête saison par série en cours)
+    const shows = await Promise.all(
+      inProgress.map(async (b): Promise<Show | null> => {
+        let next: { season: number; ep: number; runtime: number | null } | null = null;
+        try {
+          const season = await api.get<{ episodes: { episode_number: number; runtime: number | null }[] }>(
+            `/tmdb/tv/${b.detail.id}/season/${b.nextSeason}`
+          );
+          const ep = season.episodes.find(
+            (e) => !b.watched.has(epKey(b.nextSeason!, e.episode_number))
+          );
+          if (ep) next = { season: b.nextSeason!, ep: ep.episode_number, runtime: ep.runtime ?? null };
+        } catch {
+          /* ignore */
+        }
+        if (!next) return null;
+        return {
+          id: b.detail.id,
+          name: b.detail.name,
+          poster: tmdbImage(b.detail.poster_path, "w185"),
+          next,
+          watchedCount: b.watchedCount,
+          total: b.total,
+        };
+      })
+    );
+    const finalShows = shows.filter((s): s is Show => s !== null);
+    finalShows.sort((a, b) => a.name.localeCompare(b.name));
+    setShows(finalShows);
   }, []);
 
   const load = useCallback(async () => {
@@ -141,10 +181,15 @@ export default function WatchingScreen() {
 
   async function checkNext(show: Show) {
     if (!show.next) return;
-    const { season, ep } = show.next;
+    const { season, ep, runtime } = show.next;
     setChecking(show.id);
     await api
-      .post("/episodes/toggle", { tmdbShowId: show.id, seasonNumber: season, episodeNumber: ep })
+      .post("/episodes/toggle", {
+        tmdbShowId: show.id,
+        seasonNumber: season,
+        episodeNumber: ep,
+        ...(runtime ? { runtimeMin: runtime } : {}),
+      })
       .catch(() => {});
     await fetchShows().catch(() => {});
     setChecking(null);

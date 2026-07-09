@@ -171,19 +171,10 @@ export default function MediaDetailScreen() {
   }
 
   function markSeason(season: number, episodes: { episodeNumber: number; runtimeMin?: number }[]) {
-    const s = (data?.seasons ?? []).find((x) => x.season_number === season);
-    const count = s?.episode_count ?? episodes.length;
-    const rt = new Map(episodes.map((e) => [e.episodeNumber, e.runtimeMin]));
-    const full = Array.from({ length: count }, (_, i) => ({
-      episodeNumber: i + 1,
-      runtimeMin: rt.get(i + 1),
-    }));
     const n = new Set(watchedRef.current);
-    full.forEach((e) => n.add(epKey(season, e.episodeNumber)));
+    episodes.forEach((e) => n.add(epKey(season, e.episodeNumber)));
     applyWatched(n);
-    api
-      .post("/episodes/season", { tmdbShowId: tmdbId, seasonNumber: season, episodes: full })
-      .catch(() => {});
+    api.post("/episodes/season", { tmdbShowId: tmdbId, seasonNumber: season, episodes }).catch(() => {});
   }
 
   async function unmarkSeason(season: number) {
@@ -208,25 +199,28 @@ export default function MediaDetailScreen() {
     const targets = regularSeasons(data?.seasons).filter((s) => s.season_number <= targetSeason);
     const n = new Set(watchedRef.current);
     for (const s of targets) {
-      const rt = new Map<number, number | undefined>();
+      let eps: { episode_number: number; runtime: number | null }[];
       try {
         const res = await api.get<{ episodes: { episode_number: number; runtime: number | null }[] }>(
           `/tmdb/tv/${tmdbId}/season/${s.season_number}`
         );
-        res.episodes.forEach((e) => rt.set(e.episode_number, e.runtime ?? undefined));
+        eps = res.episodes;
       } catch {
-        /* runtime best-effort */
+        continue;
       }
-      const cap = s.season_number === targetSeason && maxEp != null ? maxEp : s.episode_count;
-      if (cap <= 0) continue;
-      const full = Array.from({ length: cap }, (_, i) => ({
-        episodeNumber: i + 1,
-        runtimeMin: rt.get(i + 1),
-      }));
+      const filtered =
+        s.season_number === targetSeason && maxEp != null
+          ? eps.filter((e) => e.episode_number <= maxEp)
+          : eps;
+      if (filtered.length === 0) continue;
       await api
-        .post("/episodes/season", { tmdbShowId: tmdbId, seasonNumber: s.season_number, episodes: full })
+        .post("/episodes/season", {
+          tmdbShowId: tmdbId,
+          seasonNumber: s.season_number,
+          episodes: filtered.map((e) => ({ episodeNumber: e.episode_number, runtimeMin: e.runtime ?? undefined })),
+        })
         .catch(() => {});
-      full.forEach((e) => n.add(epKey(s.season_number, e.episodeNumber)));
+      filtered.forEach((e) => n.add(epKey(s.season_number, e.episode_number)));
     }
     applyWatched(n);
   }
