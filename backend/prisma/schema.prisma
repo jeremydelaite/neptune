@@ -36,12 +36,14 @@ model User {
   username     String   @unique
   passwordHash String   @map("password_hash")
   avatarUrl    String?  @map("avatar_url")
+  isAdmin      Boolean  @default(false) @map("is_admin")
   createdAt    DateTime @default(now()) @map("created_at")
 
   trackedItems    TrackedItem[]
   watchedEpisodes WatchedEpisode[]
   ratings         Rating[]
   comments        Comment[]
+  reports         Report[]
 
   @@map("users")
 }
@@ -111,8 +113,27 @@ model Comment {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reports Report[]
 
+  // Un seul commentaire par utilisateur et par titre
+  @@unique([userId, tmdbId, mediaType])
   @@index([tmdbId, mediaType, createdAt]) // liste triée par date sous une fiche
   @@map("comments")
+}
+
+// Signalement d'un commentaire (modération)
+model Report {
+  id        String   @id @default(uuid())
+  commentId String   @map("comment_id")
+  userId    String   @map("user_id")
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Un utilisateur ne signale un commentaire qu'une fois
+  @@unique([commentId, userId])
+  @@map("reports")
 }

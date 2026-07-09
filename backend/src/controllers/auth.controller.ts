@@ -30,7 +30,10 @@ export async function register(req: Request, res: Response) {
   const user = await prisma.user.create({
     data: { email, username, passwordHash: await bcrypt.hash(password, 10) },
   });
-  res.status(201).json({ token: signToken(user.id), user: { id: user.id, username, email } });
+  res.status(201).json({
+    token: signToken(user.id),
+    user: { id: user.id, username, email, isAdmin: user.isAdmin },
+  });
 }
 
 export async function login(req: Request, res: Response) {
@@ -41,5 +44,8 @@ export async function login(req: Request, res: Response) {
   if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
     return res.status(401).json({ error: "Email ou mot de passe incorrect" });
   }
-  res.json({ token: signToken(user.id), user: { id: user.id, username: user.username, email: user.email } });
+  res.json({
+    token: signToken(user.id),
+    user: { id: user.id, username: user.username, email: user.email, isAdmin: user.isAdmin },
+  });
 }

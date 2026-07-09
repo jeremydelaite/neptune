@@ -10,7 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { LogOut, Film, Tv, Clock, Star, MessageSquare } from "lucide-react-native";
+import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2 } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
@@ -22,6 +22,15 @@ interface Stats {
   seriesTimeMin: number;
   ratingsBreakdown: { score: number; count: number }[];
   monthlyActivity: { month: string; count: number }[];
+}
+
+interface ReportedComment {
+  id: string;
+  content: string;
+  tmdbId: number;
+  mediaType: "MOVIE" | "TV";
+  reportCount: number;
+  user: { username: string };
 }
 
 interface ActivityItem {
@@ -55,6 +64,7 @@ export default function ProfileScreen() {
   const [hasMoreActivity, setHasMoreActivity] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [reported, setReported] = useState<ReportedComment[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -77,6 +87,25 @@ export default function ProfileScreen() {
       };
     }, [])
   );
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.isAdmin) return;
+      let active = true;
+      api
+        .get<ReportedComment[]>("/comments/reported")
+        .then((r) => active && setReported(r))
+        .catch(() => {});
+      return () => {
+        active = false;
+      };
+    }, [user?.isAdmin])
+  );
+
+  async function deleteReported(id: string) {
+    setReported((prev) => prev.filter((c) => c.id !== id));
+    await api.delete(`/comments/${id}`).catch(() => {});
+  }
 
   async function loadMoreActivity() {
     setLoadingMore(true);
@@ -216,6 +245,35 @@ export default function ProfileScreen() {
           </>
         )}
 
+        {/* Modération (admin) */}
+        {user?.isAdmin && (
+          <View style={styles.card}>
+            <View style={styles.modHeader}>
+              <ShieldAlert size={16} color={colors.danger} />
+              <Text style={styles.cardTitle}>Modération</Text>
+            </View>
+            {reported.length === 0 ? (
+              <Text style={styles.muted}>Aucun commentaire signalé.</Text>
+            ) : (
+              reported.map((c, i) => (
+                <View key={c.id} style={[styles.actRow, i > 0 && styles.actRowBorder]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.actTitle} numberOfLines={1}>
+                      {c.user.username} · {c.reportCount} signalement{c.reportCount > 1 ? "s" : ""}
+                    </Text>
+                    <Text style={styles.actComment} numberOfLines={2}>
+                      {c.content}
+                    </Text>
+                  </View>
+                  <Pressable onPress={() => deleteReported(c.id)} hitSlop={8} style={{ padding: 4 }}>
+                    <Trash2 size={16} color={colors.danger} />
+                  </Pressable>
+                </View>
+              ))
+            )}
+          </View>
+        )}
+
         {/* Déconnexion */}
         <Pressable
           style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
@@ -310,6 +368,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   moreText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.accentPastel },
+  modHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
 

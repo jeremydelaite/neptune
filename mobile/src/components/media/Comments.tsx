@@ -10,7 +10,7 @@ import {
   Platform,
 } from "react-native";
 import { useFocusEffect } from "expo-router";
-import { Trash2, Send, Pencil, Check, X } from "lucide-react-native";
+import { Trash2, Send, Pencil, Check, X, Flag } from "lucide-react-native";
 import { api } from "../../services/api";
 import { useAuth } from "../../hooks/useAuth";
 import { colors } from "../../theme/colors";
@@ -43,6 +43,7 @@ export function Comments({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [reported, setReported] = useState<Set<string>>(new Set());
 
   const path = mediaType.toLowerCase();
   const myComment = comments.find((c) => c.userId === user?.id);
@@ -95,6 +96,11 @@ export function Comments({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
   async function remove(id: string) {
     setComments((prev) => prev.filter((c) => c.id !== id));
     await api.delete(`/comments/${id}`).catch(() => {});
+  }
+
+  async function report(id: string) {
+    setReported((prev) => new Set(prev).add(id));
+    await api.post(`/comments/${id}/report`, {}).catch(() => {});
   }
 
   return (
@@ -174,6 +180,20 @@ export function Comments({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
                   <Text style={styles.content}>{c.content}</Text>
                 )}
               </View>
+              {!mine && (
+                <Pressable
+                  onPress={() => report(c.id)}
+                  disabled={reported.has(c.id)}
+                  hitSlop={8}
+                  style={styles.actionBtn}
+                >
+                  <Flag
+                    size={15}
+                    color={reported.has(c.id) ? colors.danger : colors.dim}
+                    fill={reported.has(c.id) ? colors.danger : "transparent"}
+                  />
+                </Pressable>
+              )}
               {mine && !editing && (
                 <View style={styles.actions}>
                   <Pressable
