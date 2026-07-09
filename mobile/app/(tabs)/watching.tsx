@@ -80,14 +80,21 @@ export default function WatchingScreen() {
   // Récupère toutes les séries de la bibliothèque et ne garde que celles
   // commencées mais pas terminées (peu importe le statut stocké).
   const fetchShows = useCallback(async () => {
-    const library = await api.get<LibraryItem[]>("/library");
-    const tvItems = library.filter((l) => l.mediaType === "TV");
+    // Source = union des séries de la bibliothèque ET de celles avec des épisodes vus
+    const [library, watchedShowIds] = await Promise.all([
+      api.get<LibraryItem[]>("/library").catch(() => [] as LibraryItem[]),
+      api.get<number[]>("/episodes/shows").catch(() => [] as number[]),
+    ]);
+    const ids = new Set<number>();
+    library.filter((l) => l.mediaType === "TV").forEach((l) => ids.add(l.tmdbId));
+    watchedShowIds.forEach((id) => ids.add(id));
+
     const built = await Promise.all(
-      tvItems.map(async (item) => {
+      [...ids].map(async (tmdbId) => {
         try {
           const [detail, eps] = await Promise.all([
-            api.get<TvDetail>(`/tmdb/tv/${item.tmdbId}`),
-            api.get<WatchedEp[]>(`/episodes/${item.tmdbId}`).catch(() => [] as WatchedEp[]),
+            api.get<TvDetail>(`/tmdb/tv/${tmdbId}`),
+            api.get<WatchedEp[]>(`/episodes/${tmdbId}`).catch(() => [] as WatchedEp[]),
           ]);
           return buildShow(detail, eps);
         } catch {

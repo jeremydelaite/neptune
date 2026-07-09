@@ -24,6 +24,21 @@ export async function getWatched(req: AuthRequest, res: Response) {
   }
 }
 
+// GET /episodes/shows — ids des séries pour lesquelles l'utilisateur a des épisodes vus
+export async function getShows(req: AuthRequest, res: Response) {
+  try {
+    const rows = await prisma.watchedEpisode.findMany({
+      where: { userId: req.userId! },
+      distinct: ["tmdbShowId"],
+      select: { tmdbShowId: true },
+    });
+    res.json(rows.map((r) => r.tmdbShowId));
+  } catch (e) {
+    console.error("getShows:", e);
+    res.status(500).json({ error: "Erreur lors de la récupération des séries" });
+  }
+}
+
 // POST /episodes/toggle — coche/décoche un épisode (insensible aux courses)
 export async function toggleEpisode(req: AuthRequest, res: Response) {
   const parsed = toggleSchema.safeParse(req.body);
