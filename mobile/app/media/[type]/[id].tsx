@@ -1,5 +1,5 @@
 // FICHE DÉTAIL film/série : bannière, statut, note, saisons (séries)
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -40,6 +40,14 @@ interface WatchedEp {
   episodeNumber: number;
 }
 
+// Saisons régulières (hors spéciaux saison 0) avec des épisodes
+const regularSeasons = (seasons: TmdbSeason[] = []) =>
+  seasons.filter((s) => s.season_number >= 1 && s.episode_count > 0);
+const regularTotal = (seasons: TmdbSeason[] = []) =>
+  regularSeasons(seasons).reduce((n, s) => n + s.episode_count, 0);
+const watchedRegularCount = (set: Set<string>) =>
+  [...set].filter((k) => Number(k.split("-")[0]) >= 1).length;
+
 export default function MediaDetailScreen() {
   const { type, id } = useLocalSearchParams<{ type: string; id: string }>();
   const router = useRouter();
@@ -57,6 +65,14 @@ export default function MediaDetailScreen() {
   const [myScore, setMyScore] = useState(0);
   const [watched, setWatched] = useState<Set<string>>(new Set());
 
+  const watchedRef = useRef<Set<string>>(new Set());
+  const statusRef = useRef<TrackStatus | null>(null);
+
+  const updateStatus = (st: TrackStatus | null) => {
+    statusRef.current = st;
+    setStatus(st);
+  };
+
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -66,9 +82,7 @@ export default function MediaDetailScreen() {
         api
           .get<{ tmdbId: number; mediaType: MediaType; status: TrackStatus }[]>("/library")
           .catch(() => [] as { tmdbId: number; mediaType: MediaType; status: TrackStatus }[]),
-        api
-          .get<{ myScore: number | null }>(`/ratings/${type}/${id}`)
-          .catch(() => ({ myScore: null })),
+        api.get<{ myScore: number | null }>(`/ratings/${type}/${id}`).catch(() => ({ myScore: null })),
         mediaType === "TV"
           ? api.get<WatchedEp[]>(`/episodes/${id}`).catch(() => [] as WatchedEp[])
           : Promise.resolve<WatchedEp[]>([]),
@@ -76,12 +90,12 @@ export default function MediaDetailScreen() {
         .then(([detail, library, rating, eps]) => {
           if (!active) return;
           setData(detail);
-          const tracked = library.find(
-            (l) => l.tmdbId === tmdbId && l.mediaType === mediaType
-          );
-          setStatus(tracked?.status ?? null);
+          const tracked = library.find((l) => l.tmdbId === tmdbId && l.mediaType === mediaType);
+          updateStatus(tracked?.status ?? null);
           setMyScore(rating.myScore ?? 0);
-          setWatched(new Set(eps.map((e) => epKey(e.seasonNumber, e.episodeNumber))));
+          const set = new Set(eps.map((e) => epKey(e.seasonNumber, e.episodeNumber)));
+          watchedRef.current = set;
+          setWatched(set);
         })
         .catch(() => active && setData(null))
         .finally(() => active && setLoading(false));
@@ -91,13 +105,43 @@ export default function MediaDetailScreen() {
     }, [type, id])
   );
 
+  // Statut auto d'une série d'après les épisodes vus
+  function syncStatus(set: Set<string>) {
+    if (mediaType !== "TV") return;
+    const total = regularTotal(data?.seasons);
+    const wc = watchedRegularCount(set);
+    const st: TrackStatus = wc === 0 ? "TO_WATCH" : total > 0 && wc >= total ? "COMPLETED" : "WATCHING";
+    if (st === statusRef.current) return;
+    updateStatus(st);
+    api.post("/library", { tmdbId, mediaType, status: st }).catch(() => {});
+  }
+
+  // Applique un nouvel ensemble d'épisodes vus + resynchronise le statut
+  function applyWatched(next: Set<string>) {
+    watchedRef.current = next;
+    setWatched(next);
+    syncStatus(next);
+  }
+
+  // --- Films : statut manuel (À voir / Vu) ---
   async function selectStatus(next: TrackStatus) {
     if (next === status) {
-      setStatus(null); // retire de la bibliothèque
+      updateStatus(null);
       await api.delete(`/library/${mediaType}/${tmdbId}`).catch(() => {});
     } else {
-      setStatus(next);
+      updateStatus(next);
       await api.post("/library", { tmdbId, mediaType, status: next }).catch(() => {});
+    }
+  }
+
+  // --- Séries : bascule "À voir" (watchlist) quand rien n'est encore vu ---
+  async function toggleWatchlist() {
+    if (status === "TO_WATCH") {
+      updateStatus(null);
+      await api.delete(`/library/${mediaType}/${tmdbId}`).catch(() => {});
+    } else {
+      updateStatus("TO_WATCH");
+      await api.post("/library", { tmdbId, mediaType, status: "TO_WATCH" }).catch(() => {});
     }
   }
 
@@ -106,14 +150,12 @@ export default function MediaDetailScreen() {
     await api.put("/ratings", { tmdbId, mediaType, score }).catch(() => {});
   }
 
-  async function toggleEpisode(season: number, ep: number, runtime: number | null) {
+  function toggleEpisode(season: number, ep: number, runtime: number | null) {
     const k = epKey(season, ep);
-    setWatched((prev) => {
-      const n = new Set(prev);
-      n.has(k) ? n.delete(k) : n.add(k);
-      return n;
-    });
-    await api
+    const n = new Set(watchedRef.current);
+    n.has(k) ? n.delete(k) : n.add(k);
+    applyWatched(n);
+    api
       .post("/episodes/toggle", {
         tmdbShowId: tmdbId,
         seasonNumber: season,
@@ -123,32 +165,23 @@ export default function MediaDetailScreen() {
       .catch(() => {});
   }
 
-  async function markSeason(
-    season: number,
-    episodes: { episodeNumber: number; runtimeMin?: number }[]
-  ) {
-    setWatched((prev) => {
-      const n = new Set(prev);
-      episodes.forEach((e) => n.add(epKey(season, e.episodeNumber)));
-      return n;
-    });
-    await api
-      .post("/episodes/season", { tmdbShowId: tmdbId, seasonNumber: season, episodes })
-      .catch(() => {});
+  function markSeason(season: number, episodes: { episodeNumber: number; runtimeMin?: number }[]) {
+    const n = new Set(watchedRef.current);
+    episodes.forEach((e) => n.add(epKey(season, e.episodeNumber)));
+    applyWatched(n);
+    api.post("/episodes/season", { tmdbShowId: tmdbId, seasonNumber: season, episodes }).catch(() => {});
   }
 
   async function unmarkSeason(season: number) {
+    const n = new Set(watchedRef.current);
     const toRemove: number[] = [];
-    setWatched((prev) => {
-      const n = new Set(prev);
-      [...prev]
-        .filter((k) => k.startsWith(`${season}-`))
-        .forEach((k) => {
-          toRemove.push(Number(k.split("-")[1]));
-          n.delete(k);
-        });
-      return n;
-    });
+    [...n]
+      .filter((k) => k.startsWith(`${season}-`))
+      .forEach((k) => {
+        toRemove.push(Number(k.split("-")[1]));
+        n.delete(k);
+      });
+    applyWatched(n);
     for (const ep of toRemove) {
       await api
         .post("/episodes/toggle", { tmdbShowId: tmdbId, seasonNumber: season, episodeNumber: ep })
@@ -157,12 +190,9 @@ export default function MediaDetailScreen() {
   }
 
   // Marque comme vus tous les épisodes jusqu'à (targetSeason, maxEp) inclus.
-  // maxEp = null => saison entière. Inclut les saisons régulières antérieures.
   async function markUpTo(targetSeason: number, maxEp: number | null) {
-    const targets = (data?.seasons ?? []).filter(
-      (s) => s.episode_count > 0 && s.season_number >= 1 && s.season_number <= targetSeason
-    );
-    const addKeys: string[] = [];
+    const targets = regularSeasons(data?.seasons).filter((s) => s.season_number <= targetSeason);
+    const n = new Set(watchedRef.current);
     for (const s of targets) {
       let eps: { episode_number: number; runtime: number | null }[];
       try {
@@ -188,13 +218,19 @@ export default function MediaDetailScreen() {
           })),
         })
         .catch(() => {});
-      filtered.forEach((e) => addKeys.push(epKey(s.season_number, e.episode_number)));
+      filtered.forEach((e) => n.add(epKey(s.season_number, e.episode_number)));
     }
-    setWatched((prev) => {
-      const n = new Set(prev);
-      addKeys.forEach((k) => n.add(k));
-      return n;
-    });
+    applyWatched(n);
+  }
+
+  const seasons = regularSeasons(data?.seasons);
+
+  async function markAllSeasons() {
+    if (seasons.length === 0) return;
+    await markUpTo(Math.max(...seasons.map((s) => s.season_number)), null);
+  }
+  async function unmarkAll() {
+    for (const s of seasons) await unmarkSeason(s.season_number);
   }
 
   if (loading) {
@@ -218,7 +254,11 @@ export default function MediaDetailScreen() {
   const title = data.title ?? data.name ?? "";
   const year = (data.release_date ?? data.first_air_date ?? "").slice(0, 4);
   const backdrop = tmdbImage(data.backdrop_path, "w780");
-  const seasons = (data.seasons ?? []).filter((s) => s.episode_count > 0);
+
+  const total = regularTotal(data.seasons);
+  const wc = watchedRegularCount(watched);
+  const allWatched = total > 0 && wc >= total;
+  const tvLabel = allWatched ? "À jour" : wc > 0 ? "En cours" : "À voir";
 
   return (
     <View style={styles.container}>
@@ -259,8 +299,29 @@ export default function MediaDetailScreen() {
             </View>
           )}
 
-          {/* Statut (dont "À voir" = plus tard) */}
-          <StatusButtons mediaType={mediaType} status={status} onSelect={selectStatus} />
+          {/* Statut */}
+          {mediaType === "TV" ? (
+            <View style={styles.statusRow}>
+              {tvLabel === "À voir" ? (
+                <Pressable
+                  style={[styles.statusPill, status === "TO_WATCH" && styles.statusPillActive]}
+                  onPress={toggleWatchlist}
+                >
+                  <Text
+                    style={[styles.statusPillText, status === "TO_WATCH" && styles.statusPillTextActive]}
+                  >
+                    {status === "TO_WATCH" ? "Dans ta liste ✓" : "À voir"}
+                  </Text>
+                </Pressable>
+              ) : (
+                <View style={[styles.statusPill, styles.statusPillActive]}>
+                  <Text style={styles.statusPillTextActive}>{tvLabel}</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <StatusButtons mediaType={mediaType} status={status} onSelect={selectStatus} />
+          )}
 
           {/* Note perso */}
           <View style={styles.rateBlock}>
@@ -279,7 +340,17 @@ export default function MediaDetailScreen() {
           {/* Saisons (séries) */}
           {mediaType === "TV" && seasons.length > 0 && (
             <>
-              <Text style={[styles.sectionLabel, { marginTop: 22 }]}>Saisons</Text>
+              <View style={styles.seasonsHeader}>
+                <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>Saisons</Text>
+                <Pressable
+                  style={[styles.markAllBtn, allWatched && styles.markAllBtnActive]}
+                  onPress={allWatched ? unmarkAll : markAllSeasons}
+                >
+                  <Text style={[styles.markAllText, allWatched && styles.markAllTextActive]}>
+                    {allWatched ? "Tout retirer" : "Tout vu"}
+                  </Text>
+                </Pressable>
+              </View>
               <SeasonList
                 showId={tmdbId}
                 seasons={seasons}
@@ -343,7 +414,38 @@ const styles = StyleSheet.create({
   },
   genreText: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.accentPastel },
 
+  statusRow: { flexDirection: "row", marginBottom: 14 },
+  statusPill: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: radius.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  statusPillActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  statusPillText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim },
+  statusPillTextActive: { fontFamily: fonts.headingSemi, fontSize: 13, color: "#fff" },
+
   rateBlock: { marginBottom: 18, alignItems: "flex-start", gap: 10 },
   sectionLabel: { fontFamily: fonts.heading, fontSize: 14, color: colors.text, marginBottom: 8 },
   overview: { fontFamily: fonts.body, fontSize: 13, lineHeight: 20, color: colors.dim, marginBottom: 4 },
+
+  seasonsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 22,
+    marginBottom: 12,
+  },
+  markAllBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.accent,
+  },
+  markAllBtnActive: { borderColor: colors.dangerLine, backgroundColor: colors.dangerSoft },
+  markAllText: { fontFamily: fonts.headingSemi, fontSize: 11, color: colors.accentPastel },
+  markAllTextActive: { color: colors.danger },
 });
