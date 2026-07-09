@@ -50,6 +50,7 @@ export default function SearchScreen() {
 
   const cache = useRef<Map<string, CacheEntry>>(new Map());
   const reqId = useRef(0); // garde anti-race
+  const prevTab = useRef<MediaType>("MOVIE"); // détecte le changement d'onglet
   const loadingMoreRef = useRef(false); // verrou page suivante (évite les doublons)
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -111,6 +112,7 @@ export default function SearchScreen() {
     // Cache client : affichage instantané si déjà cherché
     const cached = cache.current.get(cacheKey(tab, q));
     if (cached) {
+      prevTab.current = tab;
       reqId.current++;
       setResults(cached.results);
       setPage(cached.page);
@@ -119,7 +121,14 @@ export default function SearchScreen() {
       return;
     }
 
-    setLoading(true); // pas de vidage : les anciens résultats restent visibles
+    const tabChanged = prevTab.current !== tab;
+    prevTab.current = tab;
+    if (tabChanged) {
+      // Onglet différent = autre type : on vide pour ne pas relabelliser les affiches
+      reqId.current++;
+      setResults([]);
+    }
+    setLoading(true); // sinon (même onglet) les anciens résultats restent visibles
     debounce.current = setTimeout(() => fetchPage(tab, q, 1, false), 350);
     return () => {
       if (debounce.current) clearTimeout(debounce.current);
