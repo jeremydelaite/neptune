@@ -12,11 +12,25 @@ interface TmdbList {
   results: TmdbMedia[];
 }
 
+// Accroches de l'Accueil — une au hasard à chaque ouverture
+const GREETINGS = [
+  "Qu'est-ce qu'on regarde\u00A0?",
+  "Ce soir, on regarde quoi\u00A0?",
+  "Prêt pour une séance\u00A0?",
+  "Cap sur ta prochaine séance",
+  "Explore ta galaxie de films",
+  "Ta prochaine obsession est ici",
+  "Trouve ta pépite du soir",
+  "En orbite. On vise quoi\u00A0?",
+];
+const pickGreeting = () => GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
+
 export default function HomeScreen() {
   const [newMovies, setNewMovies] = useState<TmdbMedia[]>([]);
   const [newShows, setNewShows] = useState<TmdbMedia[]>([]);
   const [popMovies, setPopMovies] = useState<TmdbMedia[]>([]);
   const [popShows, setPopShows] = useState<TmdbMedia[]>([]);
+  const [greeting] = useState(pickGreeting);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -59,7 +73,7 @@ export default function HomeScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
-          <Text style={styles.hello}>Quoi ce soir&nbsp;?</Text>
+          <Text style={styles.hello}>{greeting}</Text>
           <MediaRow title="Nouveaux films" items={newMovies} mediaType="MOVIE" />
           <MediaRow title="Nouvelles séries" items={newShows} mediaType="TV" />
           <MediaRow title="Films populaires" items={popMovies} mediaType="MOVIE" />
