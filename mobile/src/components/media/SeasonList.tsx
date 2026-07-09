@@ -127,7 +127,9 @@ export function SeasonList({ showId, seasons, watched, onToggle, onMarkSeason, o
                         <View style={[styles.check, on && styles.checkOn]}>
                           {on && <Check size={13} color="#fff" strokeWidth={3} />}
                         </View>
-                        <Text style={styles.epNum}>{e.episode_number}</Text>
+                        <Text style={styles.epNum} numberOfLines={1}>
+                          {e.episode_number}
+                        </Text>
                         <Text style={styles.epName} numberOfLines={1}>
                           {e.name}
                         </Text>
@@ -178,6 +180,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checkOn: { backgroundColor: colors.violet, borderColor: colors.violet },
-  epNum: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.dim, width: 20 },
+  epNum: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.dim, minWidth: 34, textAlign: "right" },
   epName: { fontFamily: fonts.body, fontSize: 13, color: colors.text, flex: 1 },
 });
