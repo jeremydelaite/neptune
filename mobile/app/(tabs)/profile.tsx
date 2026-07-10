@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye } from "lucide-react-native";
+import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
@@ -173,6 +173,9 @@ export default function ProfileScreen() {
             <Text style={styles.username}>{user?.username}</Text>
             <Text style={styles.email}>{user?.email}</Text>
           </View>
+          <Pressable onPress={() => router.push("/settings")} hitSlop={12} style={styles.gear}>
+            <Settings size={22} color={colors.dim} />
+          </Pressable>
         </View>
 
         {loading ? (
@@ -363,6 +366,16 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   avatarText: { fontFamily: fonts.heading, fontSize: 22, color: colors.accentPastel },
+  gear: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
   username: { fontFamily: fonts.heading, fontSize: 20, color: colors.text },
   email: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, marginTop: 2 },
 

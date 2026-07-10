@@ -9,6 +9,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateUser: (partial: Partial<User>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -44,6 +45,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout: async () => {
           await AsyncStorage.multiRemove(["neptune_token", "neptune_user"]);
           setUser(null);
+        },
+        updateUser: async (partial) => {
+          setUser((prev) => {
+            const next = prev ? { ...prev, ...partial } : prev;
+            if (next) AsyncStorage.setItem("neptune_user", JSON.stringify(next));
+            return next;
+          });
         },
       }}
     >
