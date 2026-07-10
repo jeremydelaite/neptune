@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, Pencil } from "lucide-react-native";
 import { api } from "../src/services/api";
 import { useAuth } from "../src/hooks/useAuth";
 import { colors } from "../src/theme/colors";
@@ -48,6 +48,8 @@ export default function SettingsScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editingPassword, setEditingPassword] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [profileMsg, setProfileMsg] = useState<Feedback>(null);
@@ -66,18 +68,24 @@ export default function SettingsScreen() {
         .then((me) => {
           if (!active) return;
           setCreatedAt(me.createdAt);
-          setUsername(me.username);
-          setEmail(me.email);
+          if (!editingProfile) {
+            setUsername(me.username);
+            setEmail(me.email);
+          }
         })
         .catch(() => {});
       return () => {
         active = false;
       };
-    }, [])
+    }, [editingProfile])
   );
 
-  const profileDirty =
-    username.trim() !== (user?.username ?? "") || email.trim() !== (user?.email ?? "");
+  function cancelProfile() {
+    setUsername(user?.username ?? "");
+    setEmail(user?.email ?? "");
+    setProfileMsg(null);
+    setEditingProfile(false);
+  }
 
   async function saveProfile() {
     setProfileMsg(null);
@@ -87,6 +95,11 @@ export default function SettingsScreen() {
     if (u.length > 30) return setProfileMsg({ type: "err", text: "Pseudo : 30 caractères maximum" });
     if (!EMAIL_RE.test(e)) return setProfileMsg({ type: "err", text: "Email invalide" });
 
+    if (u === user?.username && e === user?.email) {
+      setEditingProfile(false);
+      return;
+    }
+
     setSavingProfile(true);
     try {
       const body: { username?: string; email?: string } = {};
@@ -95,11 +108,20 @@ export default function SettingsScreen() {
       const me = await api.patch<Me>("/auth/profile", body);
       await updateUser({ username: me.username, email: me.email });
       setProfileMsg({ type: "ok", text: "Profil mis à jour" });
+      setEditingProfile(false);
     } catch (err) {
       setProfileMsg({ type: "err", text: err instanceof Error ? err.message : "Échec de la mise à jour" });
     } finally {
       setSavingProfile(false);
     }
+  }
+
+  function cancelPassword() {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setPasswordMsg(null);
+    setEditingPassword(false);
   }
 
   async function savePassword() {
@@ -116,6 +138,7 @@ export default function SettingsScreen() {
       setNewPassword("");
       setConfirmPassword("");
       setPasswordMsg({ type: "ok", text: "Mot de passe modifié" });
+      setEditingPassword(false);
     } catch (err) {
       setPasswordMsg({ type: "err", text: err instanceof Error ? err.message : "Échec de la modification" });
     } finally {
@@ -136,19 +159,17 @@ export default function SettingsScreen() {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-        >
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {/* Profil */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Profil</Text>
 
             <Text style={styles.label}>Pseudo</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, !editingProfile && styles.inputLocked]}
               value={username}
               onChangeText={setUsername}
+              editable={editingProfile}
               autoCapitalize="none"
               placeholder="Pseudo"
               placeholderTextColor={colors.dim}
@@ -156,9 +177,10 @@ export default function SettingsScreen() {
 
             <Text style={styles.label}>Email</Text>
             <TextInput
-              style={styles.input}
+              style={[styles.input, !editingProfile && styles.inputLocked]}
               value={email}
               onChangeText={setEmail}
+              editable={editingProfile}
               autoCapitalize="none"
               keyboardType="email-address"
               placeholder="Email"
@@ -169,68 +191,95 @@ export default function SettingsScreen() {
               <Text style={profileMsg.type === "ok" ? styles.ok : styles.err}>{profileMsg.text}</Text>
             )}
 
-            <Pressable
-              style={[styles.button, (!profileDirty || savingProfile) && styles.buttonDisabled]}
-              onPress={saveProfile}
-              disabled={!profileDirty || savingProfile}
-            >
-              {savingProfile ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Enregistrer</Text>
-              )}
-            </Pressable>
+            {editingProfile ? (
+              <View style={styles.btnRow}>
+                <Pressable style={[styles.button, styles.btnGhost]} onPress={cancelProfile} disabled={savingProfile}>
+                  <Text style={styles.btnGhostText}>Annuler</Text>
+                </Pressable>
+                <Pressable style={[styles.button, styles.btnFill, savingProfile && styles.buttonDisabled]} onPress={saveProfile} disabled={savingProfile}>
+                  {savingProfile ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.buttonText}>Enregistrer</Text>
+                  )}
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable style={[styles.button, styles.btnOutline]} onPress={() => { setProfileMsg(null); setEditingProfile(true); }}>
+                <Pencil size={15} color={colors.accentPastel} />
+                <Text style={styles.btnOutlineText}>Modifier</Text>
+              </Pressable>
+            )}
           </View>
 
           {/* Mot de passe */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Mot de passe</Text>
 
-            <Text style={styles.label}>Mot de passe actuel</Text>
-            <TextInput
-              style={styles.input}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-              placeholder="••••••••"
-              placeholderTextColor={colors.dim}
-            />
+            {editingPassword ? (
+              <>
+                <Text style={styles.label}>Mot de passe actuel</Text>
+                <TextInput
+                  style={styles.input}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  secureTextEntry
+                  placeholder="••••••••"
+                  placeholderTextColor={colors.dim}
+                />
 
-            <Text style={styles.label}>Nouveau mot de passe</Text>
-            <TextInput
-              style={styles.input}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              placeholder="8 caractères minimum"
-              placeholderTextColor={colors.dim}
-            />
+                <Text style={styles.label}>Nouveau mot de passe</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                  placeholder="8 caractères minimum"
+                  placeholderTextColor={colors.dim}
+                />
 
-            <Text style={styles.label}>Confirmer</Text>
-            <TextInput
-              style={styles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              placeholder="Répéter le nouveau"
-              placeholderTextColor={colors.dim}
-            />
+                <Text style={styles.label}>Confirmer</Text>
+                <TextInput
+                  style={styles.input}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                  placeholder="Répéter le nouveau"
+                  placeholderTextColor={colors.dim}
+                />
 
-            {passwordMsg && (
-              <Text style={passwordMsg.type === "ok" ? styles.ok : styles.err}>{passwordMsg.text}</Text>
+                {passwordMsg && (
+                  <Text style={passwordMsg.type === "ok" ? styles.ok : styles.err}>{passwordMsg.text}</Text>
+                )}
+
+                <View style={styles.btnRow}>
+                  <Pressable style={[styles.button, styles.btnGhost]} onPress={cancelPassword} disabled={savingPassword}>
+                    <Text style={styles.btnGhostText}>Annuler</Text>
+                  </Pressable>
+                  <Pressable style={[styles.button, styles.btnFill, savingPassword && styles.buttonDisabled]} onPress={savePassword} disabled={savingPassword}>
+                    {savingPassword ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={styles.buttonText}>Enregistrer</Text>
+                    )}
+                  </Pressable>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Mot de passe</Text>
+                  <Text style={styles.infoValue}>••••••••</Text>
+                </View>
+                {passwordMsg && (
+                  <Text style={passwordMsg.type === "ok" ? styles.ok : styles.err}>{passwordMsg.text}</Text>
+                )}
+                <Pressable style={[styles.button, styles.btnOutline]} onPress={() => { setPasswordMsg(null); setEditingPassword(true); }}>
+                  <Pencil size={15} color={colors.accentPastel} />
+                  <Text style={styles.btnOutlineText}>Modifier</Text>
+                </Pressable>
+              </>
             )}
-
-            <Pressable
-              style={[styles.button, savingPassword && styles.buttonDisabled]}
-              onPress={savePassword}
-              disabled={savingPassword}
-            >
-              {savingPassword ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <Text style={styles.buttonText}>Modifier le mot de passe</Text>
-              )}
-            </Pressable>
           </View>
 
           {/* Informations du compte */}
@@ -239,10 +288,6 @@ export default function SettingsScreen() {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Email</Text>
               <Text style={styles.infoValue}>{email}</Text>
-            </View>
-            <View style={[styles.infoRow, styles.infoRowBorder]}>
-              <Text style={styles.infoLabel}>Mot de passe</Text>
-              <Text style={styles.infoValue}>••••••••</Text>
             </View>
             <View style={[styles.infoRow, styles.infoRowBorder]}>
               <Text style={styles.infoLabel}>Membre depuis</Text>
@@ -300,16 +345,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 14,
   },
+  inputLocked: { color: colors.dim, backgroundColor: colors.surface2, borderColor: "transparent" },
 
   ok: { color: colors.accentPastel, fontSize: 12, fontFamily: fonts.bodyMedium, marginBottom: 10 },
   err: { color: "#F87171", fontSize: 12, fontFamily: fonts.bodyMedium, marginBottom: 10 },
 
+  btnRow: { flexDirection: "row", gap: 10 },
   button: {
-    backgroundColor: colors.accent,
     borderRadius: radius.md,
     padding: 14,
     alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 8,
   },
+  btnFill: { flex: 1, backgroundColor: colors.accent },
+  btnGhost: { flex: 1, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.line },
+  btnGhostText: { color: colors.dim, fontFamily: fonts.headingSemi, fontSize: 14 },
+  btnOutline: { backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: colors.accent },
+  btnOutlineText: { color: colors.accentPastel, fontFamily: fonts.headingSemi, fontSize: 14 },
   buttonDisabled: { opacity: 0.45 },
   buttonText: { color: "#fff", fontFamily: fonts.headingSemi, fontSize: 14 },
 
