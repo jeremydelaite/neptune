@@ -285,8 +285,8 @@ export default function MediaDetailScreen() {
             colors={["rgba(15,17,21,0.2)", "rgba(15,17,21,0.65)", colors.bg]}
             style={StyleSheet.absoluteFill}
           />
-          <Pressable style={styles.back} onPress={goBack} hitSlop={10}>
-            <ArrowLeft size={22} color="#fff" />
+          <Pressable style={styles.back} onPress={goBack} hitSlop={16}>
+            <ArrowLeft size={24} color="#fff" />
           </Pressable>
           <View style={styles.bannerText}>
             <Text style={styles.title}>{title}</Text>
@@ -396,10 +396,10 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 44,
     left: 16,
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     borderRadius: 999,
-    backgroundColor: "rgba(15,17,21,0.55)",
+    backgroundColor: "rgba(15,17,21,0.6)",
     alignItems: "center",
     justifyContent: "center",
   },

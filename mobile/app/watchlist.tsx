@@ -77,8 +77,8 @@ export default function WatchlistScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Pressable onPress={goBack} hitSlop={10} style={styles.back}>
-          <ArrowLeft size={22} color={colors.text} />
+        <Pressable onPress={goBack} hitSlop={16} style={styles.back}>
+          <ArrowLeft size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>À voir</Text>
       </View>
@@ -109,7 +109,16 @@ export default function WatchlistScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 10 },
-  back: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
+  back: {
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
   title: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
   list: { paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 100 },
   row: { gap: GAP, marginBottom: GAP },

@@ -133,8 +133,8 @@ export default function WatchedScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Pressable onPress={goBack} hitSlop={10} style={styles.back}>
-          <ArrowLeft size={22} color={colors.text} />
+        <Pressable onPress={goBack} hitSlop={16} style={styles.back}>
+          <ArrowLeft size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>Vu</Text>
       </View>
@@ -191,7 +191,16 @@ export default function WatchedScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 6 },
-  back: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
+  back: {
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
   title: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
 
   tabs: { flexDirection: "row", gap: 8, paddingHorizontal: PADDING, paddingBottom: 10 },

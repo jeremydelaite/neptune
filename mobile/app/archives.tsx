@@ -172,8 +172,8 @@ export default function ArchivesScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
-        <Pressable onPress={goBack} hitSlop={10} style={styles.back}>
-          <ArrowLeft size={22} color={colors.text} />
+        <Pressable onPress={goBack} hitSlop={16} style={styles.back}>
+          <ArrowLeft size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.screenTitle}>Séries archivées</Text>
       </View>
@@ -202,7 +202,16 @@ export default function ArchivesScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10 },
-  back: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
+  back: {
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
   screenTitle: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
   hint: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginBottom: 10 },
   list: { paddingHorizontal: 16, paddingBottom: 100, gap: 12 },
