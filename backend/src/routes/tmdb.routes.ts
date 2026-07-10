@@ -4,10 +4,11 @@ import { tmdbFetch } from "../services/tmdb.service";
 const router = Router();
 
 // Page d'accueil
-router.get("/movies/new", async (_req, res) => res.json(await tmdbFetch("/movie/now_playing")));
-router.get("/movies/popular", async (_req, res) => res.json(await tmdbFetch("/movie/popular")));
-router.get("/tv/new", async (_req, res) => res.json(await tmdbFetch("/tv/on_the_air")));
-router.get("/tv/popular", async (_req, res) => res.json(await tmdbFetch("/tv/popular")));
+const pageOf = (req: any) => ({ page: String(req.query.page ?? "1") });
+router.get("/movies/new", async (req, res) => res.json(await tmdbFetch("/movie/now_playing", pageOf(req))));
+router.get("/movies/popular", async (req, res) => res.json(await tmdbFetch("/movie/popular", pageOf(req))));
+router.get("/tv/new", async (req, res) => res.json(await tmdbFetch("/tv/on_the_air", pageOf(req))));
+router.get("/tv/popular", async (req, res) => res.json(await tmdbFetch("/tv/popular", pageOf(req))));
 
 // Recherche (onglets Films / Séries séparés)
 router.get("/search/movie", async (req, res) =>
@@ -35,6 +36,7 @@ router.get("/discover/movie", async (req, res) =>
       sort_by: "popularity.desc",
       "vote_count.gte": "80",
       include_adult: "false",
+      page: String(req.query.page ?? "1"),
     })
   )
 );
@@ -45,6 +47,7 @@ router.get("/discover/tv", async (req, res) =>
       sort_by: "popularity.desc",
       "vote_count.gte": "80",
       include_adult: "false",
+      page: String(req.query.page ?? "1"),
     })
   )
 );

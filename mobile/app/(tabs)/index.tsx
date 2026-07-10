@@ -50,16 +50,32 @@ export default function HomeScreen() {
     );
   }, []);
 
+  // Récupère plusieurs pages TMDB et nettoie, jusqu'à ~18 titres (remplit la ligne)
+  const fetchRow = useCallback(
+    async (base: string, mediaType: MediaType, target = 18): Promise<TmdbMedia[]> => {
+      const out: TmdbMedia[] = [];
+      const ids = new Set<number>();
+      for (let page = 1; page <= 5 && out.length < target; page++) {
+        const sep = base.includes("?") ? "&" : "?";
+        let data: TmdbList;
+        try {
+          data = await api.get<TmdbList>(`${base}${sep}page=${page}`);
+        } catch {
+          break;
+        }
+        const items = clean(data.results ?? [], mediaType).filter((m) => !ids.has(m.id));
+        items.forEach((m) => ids.add(m.id));
+        out.push(...items);
+        if (!data.results || data.results.length === 0) break;
+      }
+      return out;
+    },
+    [clean]
+  );
+
   const fetchData = useCallback(async () => {
-    const [lib, results] = await Promise.all([
-      api.get<LibraryItem[]>("/library").catch(() => [] as LibraryItem[]),
-      Promise.allSettled([
-        api.get<TmdbList>("/tmdb/movies/new"),
-        api.get<TmdbList>("/tmdb/tv/new"),
-        api.get<TmdbList>("/tmdb/movies/popular"),
-        api.get<TmdbList>("/tmdb/tv/popular"),
-      ]),
-    ]);
+    // La bibliothèque d'abord (pour connaître ce qui est déjà vu)
+    const lib = await api.get<LibraryItem[]>("/library").catch(() => [] as LibraryItem[]);
     excludeRef.current = new Set(
       lib
         .filter(
@@ -69,14 +85,19 @@ export default function HomeScreen() {
         )
         .map((l) => `${l.mediaType}-${l.tmdbId}`)
     );
-    const [nm, ns, pm, ps] = results;
-    if (nm.status === "fulfilled") setNewMovies(clean(nm.value.results, "MOVIE"));
-    if (ns.status === "fulfilled") setNewShows(clean(ns.value.results, "TV"));
-    if (pm.status === "fulfilled") setPopMovies(clean(pm.value.results, "MOVIE"));
-    if (ps.status === "fulfilled") setPopShows(clean(ps.value.results, "TV"));
-    setError(results.every((r) => r.status === "rejected"));
+    const [nm, ns, pm, ps] = await Promise.all([
+      fetchRow("/tmdb/movies/new", "MOVIE"),
+      fetchRow("/tmdb/tv/new", "TV"),
+      fetchRow("/tmdb/movies/popular", "MOVIE"),
+      fetchRow("/tmdb/tv/popular", "TV"),
+    ]);
+    setNewMovies(nm);
+    setNewShows(ns);
+    setPopMovies(pm);
+    setPopShows(ps);
+    setError(nm.length === 0 && ns.length === 0 && pm.length === 0 && ps.length === 0);
     loadGenres();
-  }, [clean]);
+  }, [fetchRow]);
 
   // Rangées personnalisées selon les genres les plus regardés
   const loadGenres = useCallback(async () => {
@@ -89,12 +110,12 @@ export default function HomeScreen() {
       const rows = await Promise.all(
         picks.map(async ({ mediaType, g }) => {
           const path = mediaType === "MOVIE" ? "movie" : "tv";
-          const d = await api.get<TmdbList>(`/tmdb/discover/${path}?genre=${g.id}`);
+          const items = await fetchRow(`/tmdb/discover/${path}?genre=${g.id}`, mediaType);
           return {
             key: `${mediaType}-${g.id}`,
             title: `${mediaType === "MOVIE" ? "Films" : "Séries"} · ${g.name}`,
             mediaType,
-            items: clean(d.results ?? [], mediaType),
+            items,
           } as GenreRow;
         })
       );
@@ -102,7 +123,7 @@ export default function HomeScreen() {
     } catch {
       setGenreRows([]);
     }
-  }, [clean]);
+  }, [fetchRow]);
 
   // Chargement initial (loader plein écran)
   const load = useCallback(async () => {
