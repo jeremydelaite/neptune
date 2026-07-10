@@ -7,8 +7,6 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -75,7 +73,6 @@ export default function MediaDetailScreen() {
   const [myScore, setMyScore] = useState(0);
   const [watched, setWatched] = useState<Set<string>>(new Set());
 
-  const scrollRef = useRef<ScrollView>(null);
   const watchedRef = useRef<Set<string>>(new Set());
   const statusRef = useRef<TrackStatus | null>(null);
 
@@ -272,15 +269,12 @@ export default function MediaDetailScreen() {
   const tvLabel = allWatched ? "À jour" : wc > 0 ? "En cours" : "À voir";
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <View style={styles.container}>
       <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: 220 }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
       >
         {/* Bannière */}
         <View style={styles.banner}>
@@ -383,16 +377,10 @@ export default function MediaDetailScreen() {
           )}
 
           {/* Commentaires (film ou série) */}
-          <Comments
-            mediaType={mediaType}
-            tmdbId={tmdbId}
-            onFocusInput={() =>
-              setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120)
-            }
-          />
+          <Comments mediaType={mediaType} tmdbId={tmdbId} />
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
