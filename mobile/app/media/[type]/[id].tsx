@@ -285,9 +285,6 @@ export default function MediaDetailScreen() {
             colors={["rgba(15,17,21,0.2)", "rgba(15,17,21,0.65)", colors.bg]}
             style={StyleSheet.absoluteFill}
           />
-          <Pressable style={styles.back} onPress={goBack} hitSlop={16}>
-            <ArrowLeft size={24} color="#fff" />
-          </Pressable>
           <View style={styles.bannerText}>
             <Text style={styles.title}>{title}</Text>
             <View style={styles.metaRow}>
@@ -380,6 +377,11 @@ export default function MediaDetailScreen() {
           <Comments mediaType={mediaType} tmdbId={tmdbId} />
         </View>
       </ScrollView>
+
+      {/* Bouton retour fixe (ne défile pas) */}
+      <Pressable style={styles.back} onPress={goBack} hitSlop={16}>
+        <ArrowLeft size={26} color="#fff" />
+      </Pressable>
     </View>
   );
 }
@@ -394,10 +396,10 @@ const styles = StyleSheet.create({
   banner: { height: 300, justifyContent: "flex-end", backgroundColor: colors.surface },
   back: {
     position: "absolute",
-    top: 44,
+    top: 48,
     left: 16,
-    width: 44,
-    height: 44,
+    width: 50,
+    height: 50,
     borderRadius: 999,
     backgroundColor: "rgba(15,17,21,0.6)",
     alignItems: "center",
