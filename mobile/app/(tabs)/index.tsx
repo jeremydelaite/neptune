@@ -112,7 +112,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, paddingBottom: 100 },
-  logo: { width: 150, height: 150 / 3.89, alignSelf: "flex-start", marginBottom: 18 },
+  logo: { width: 190, height: 190 / 3.89, alignSelf: "flex-start", marginBottom: 18 },
   hello: { fontFamily: fonts.heading, fontSize: 24, color: colors.text, marginBottom: 20 },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
   hint: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, textAlign: "center" },
