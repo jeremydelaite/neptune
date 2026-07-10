@@ -16,6 +16,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { ArrowLeft, Pencil } from "lucide-react-native";
 import { api } from "../src/services/api";
 import { useAuth } from "../src/hooks/useAuth";
+import { ConfirmModal } from "../src/components/ui/ConfirmModal";
 import { colors } from "../src/theme/colors";
 import { fonts, radius } from "../src/theme/typography";
 
@@ -54,6 +55,7 @@ export default function SettingsScreen() {
   const [savingPassword, setSavingPassword] = useState(false);
   const [profileMsg, setProfileMsg] = useState<Feedback>(null);
   const [passwordMsg, setPasswordMsg] = useState<Feedback>(null);
+  const [confirmKind, setConfirmKind] = useState<null | "profile" | "password">(null);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -87,19 +89,23 @@ export default function SettingsScreen() {
     setEditingProfile(false);
   }
 
-  async function saveProfile() {
+  function requestSaveProfile() {
     setProfileMsg(null);
     const u = username.trim();
     const e = email.trim();
     if (u.length < 3) return setProfileMsg({ type: "err", text: "Pseudo : 3 caractères minimum" });
     if (u.length > 30) return setProfileMsg({ type: "err", text: "Pseudo : 30 caractères maximum" });
     if (!EMAIL_RE.test(e)) return setProfileMsg({ type: "err", text: "Email invalide" });
-
     if (u === user?.username && e === user?.email) {
       setEditingProfile(false);
       return;
     }
+    setConfirmKind("profile");
+  }
 
+  async function doSaveProfile() {
+    const u = username.trim();
+    const e = email.trim();
     setSavingProfile(true);
     try {
       const body: { username?: string; email?: string } = {};
@@ -124,13 +130,16 @@ export default function SettingsScreen() {
     setEditingPassword(false);
   }
 
-  async function savePassword() {
+  function requestSavePassword() {
     setPasswordMsg(null);
     if (!currentPassword) return setPasswordMsg({ type: "err", text: "Mot de passe actuel requis" });
     if (newPassword.length < 8) return setPasswordMsg({ type: "err", text: "Nouveau : 8 caractères minimum" });
     if (newPassword !== confirmPassword)
       return setPasswordMsg({ type: "err", text: "Les mots de passe ne correspondent pas" });
+    setConfirmKind("password");
+  }
 
+  async function doSavePassword() {
     setSavingPassword(true);
     try {
       await api.patch("/auth/password", { currentPassword, newPassword });
@@ -196,7 +205,7 @@ export default function SettingsScreen() {
                 <Pressable style={[styles.button, styles.btnGhost]} onPress={cancelProfile} disabled={savingProfile}>
                   <Text style={styles.btnGhostText}>Annuler</Text>
                 </Pressable>
-                <Pressable style={[styles.button, styles.btnFill, savingProfile && styles.buttonDisabled]} onPress={saveProfile} disabled={savingProfile}>
+                <Pressable style={[styles.button, styles.btnFill, savingProfile && styles.buttonDisabled]} onPress={requestSaveProfile} disabled={savingProfile}>
                   {savingProfile ? (
                     <ActivityIndicator color="#fff" size="small" />
                   ) : (
@@ -237,6 +246,7 @@ export default function SettingsScreen() {
                   placeholder="8 caractères minimum"
                   placeholderTextColor={colors.dim}
                 />
+                <Text style={styles.hint}>Au moins 8 caractères.</Text>
 
                 <Text style={styles.label}>Confirmer</Text>
                 <TextInput
@@ -256,7 +266,7 @@ export default function SettingsScreen() {
                   <Pressable style={[styles.button, styles.btnGhost]} onPress={cancelPassword} disabled={savingPassword}>
                     <Text style={styles.btnGhostText}>Annuler</Text>
                   </Pressable>
-                  <Pressable style={[styles.button, styles.btnFill, savingPassword && styles.buttonDisabled]} onPress={savePassword} disabled={savingPassword}>
+                  <Pressable style={[styles.button, styles.btnFill, savingPassword && styles.buttonDisabled]} onPress={requestSavePassword} disabled={savingPassword}>
                     {savingPassword ? (
                       <ActivityIndicator color="#fff" size="small" />
                     ) : (
@@ -296,6 +306,25 @@ export default function SettingsScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ConfirmModal
+        visible={confirmKind !== null}
+        title={confirmKind === "password" ? "Changer le mot de passe" : "Enregistrer les modifications"}
+        message={
+          confirmKind === "password"
+            ? "Confirmer le changement de ton mot de passe ?"
+            : "Confirmer la mise à jour de ton profil ?"
+        }
+        confirmLabel="Confirmer"
+        cancelLabel="Annuler"
+        onCancel={() => setConfirmKind(null)}
+        onConfirm={() => {
+          const kind = confirmKind;
+          setConfirmKind(null);
+          if (kind === "profile") doSaveProfile();
+          else if (kind === "password") doSavePassword();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -346,6 +375,7 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   inputLocked: { color: colors.dim, backgroundColor: colors.surface2, borderColor: "transparent" },
+  hint: { fontFamily: fonts.body, fontSize: 11, color: colors.dim, marginTop: -8, marginBottom: 14 },
 
   ok: { color: colors.accentPastel, fontSize: 12, fontFamily: fonts.bodyMedium, marginBottom: 10 },
   err: { color: "#F87171", fontSize: 12, fontFamily: fonts.bodyMedium, marginBottom: 10 },
