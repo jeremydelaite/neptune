@@ -36,9 +36,8 @@ export default function HomeScreen() {
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
+  // Récupère les données sans toucher à l'état "chargement" plein écran
+  const fetchData = useCallback(async () => {
     const results = await Promise.allSettled([
       api.get<TmdbList>("/tmdb/movies/new"),
       api.get<TmdbList>("/tmdb/tv/new"),
@@ -51,14 +50,22 @@ export default function HomeScreen() {
     if (pm.status === "fulfilled") setPopMovies(pm.value.results);
     if (ps.status === "fulfilled") setPopShows(ps.value.results);
     setError(results.every((r) => r.status === "rejected"));
-    setLoading(false);
   }, []);
 
+  // Chargement initial (loader plein écran)
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
+    await fetchData();
+    setLoading(false);
+  }, [fetchData]);
+
+  // Pull-to-refresh : garde le contenu affiché, juste le spinner du RefreshControl
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load();
+    await fetchData();
     setRefreshing(false);
-  }, [load]);
+  }, [fetchData]);
 
   useEffect(() => {
     load();
