@@ -1,5 +1,5 @@
 // VU : films vus (COMPLETED) + séries en cours (WATCHING) ou à jour (COMPLETED)
-// Scroll infini : les ids sont récupérés d'un coup, les détails TMDB par pages.
+// Filtres Tout/Films/Séries + scroll infini (détails TMDB paginés).
 import { useCallback, useRef, useState } from "react";
 import {
   View,
@@ -16,7 +16,7 @@ import { ArrowLeft } from "lucide-react-native";
 import { api } from "../src/services/api";
 import { PosterCard } from "../src/components/media/PosterCard";
 import { colors } from "../src/theme/colors";
-import { fonts } from "../src/theme/typography";
+import { fonts, radius } from "../src/theme/typography";
 import type { TmdbMedia, MediaType } from "../src/types";
 
 interface LibraryItem {
@@ -28,6 +28,7 @@ interface Entry {
   media: TmdbMedia;
   mediaType: MediaType;
 }
+type Filter = "ALL" | "MOVIE" | "TV";
 
 const GAP = 12;
 const PADDING = 16;
@@ -41,8 +42,10 @@ export default function WatchedScreen() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [filter, setFilter] = useState<Filter>("ALL");
 
-  const idsRef = useRef<LibraryItem[]>([]);
+  const allRef = useRef<LibraryItem[]>([]); // tous les "vus"
+  const idsRef = useRef<LibraryItem[]>([]); // sous-ensemble filtré
   const cursorRef = useRef(0);
   const busyRef = useRef(false);
 
@@ -74,24 +77,34 @@ export default function WatchedScreen() {
     busyRef.current = false;
   }, [enrich]);
 
+  // (re)construit la liste selon le filtre choisi
+  const rebuild = useCallback(
+    async (f: Filter) => {
+      idsRef.current = allRef.current.filter((l) => f === "ALL" || l.mediaType === f);
+      cursorRef.current = 0;
+      setEntries([]);
+      await loadNext();
+    },
+    [loadNext]
+  );
+
   const load = useCallback(async () => {
     setLoading(true);
-    cursorRef.current = 0;
-    setEntries([]);
     try {
       const lib = await api.get<LibraryItem[]>("/library");
-      idsRef.current = lib.filter(
+      allRef.current = lib.filter(
         (l) =>
           (l.mediaType === "MOVIE" && l.status === "COMPLETED") ||
           (l.mediaType === "TV" && (l.status === "WATCHING" || l.status === "COMPLETED"))
       );
-      await loadNext();
+      await rebuild(filter);
     } catch {
+      allRef.current = [];
       idsRef.current = [];
     } finally {
       setLoading(false);
     }
-  }, [loadNext]);
+  }, [filter, rebuild]);
 
   useFocusEffect(
     useCallback(() => {
@@ -99,12 +112,23 @@ export default function WatchedScreen() {
     }, [load])
   );
 
+  function selectFilter(f: Filter) {
+    if (f === filter) return;
+    setFilter(f);
+    rebuild(f);
+  }
+
   const goBack = () => {
     if (router.canGoBack()) router.back();
     else router.replace("/(tabs)/profile");
   };
 
   const hasMore = cursorRef.current < idsRef.current.length;
+  const TABS: { key: Filter; label: string }[] = [
+    { key: "ALL", label: "Tout" },
+    { key: "MOVIE", label: "Films" },
+    { key: "TV", label: "Séries" },
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
@@ -113,6 +137,21 @@ export default function WatchedScreen() {
           <ArrowLeft size={22} color={colors.text} />
         </Pressable>
         <Text style={styles.title}>Vu</Text>
+      </View>
+
+      <View style={styles.tabs}>
+        {TABS.map((t) => {
+          const active = filter === t.key;
+          return (
+            <Pressable
+              key={t.key}
+              style={[styles.tab, active && styles.tabActive]}
+              onPress={() => selectFilter(t.key)}
+            >
+              <Text style={[styles.tabText, active && styles.tabTextActive]}>{t.label}</Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {loading ? (
@@ -131,7 +170,11 @@ export default function WatchedScreen() {
           )}
           ListEmptyComponent={
             <Text style={styles.empty}>
-              Rien de vu pour l'instant. Marque un film « Vu » ou commence une série.
+              {filter === "MOVIE"
+                ? "Aucun film vu pour l'instant."
+                : filter === "TV"
+                ? "Aucune série commencée pour l'instant."
+                : "Rien de vu pour l'instant. Marque un film « Vu » ou commence une série."}
             </Text>
           }
           ListFooterComponent={
@@ -147,9 +190,23 @@ export default function WatchedScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 10 },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 6 },
   back: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
   title: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
+
+  tabs: { flexDirection: "row", gap: 8, paddingHorizontal: PADDING, paddingBottom: 10 },
+  tab: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  tabActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  tabText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim },
+  tabTextActive: { color: "#fff" },
+
   list: { paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 100 },
   row: { gap: GAP, marginBottom: GAP },
   empty: {
