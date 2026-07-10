@@ -131,13 +131,13 @@ export default function HomeScreen() {
             resizeMode="contain"
           />
           <Text style={styles.hello}>{greeting}</Text>
-          {genreRows.map((row) => (
-            <MediaRow key={row.key} title={row.title} items={row.items} mediaType={row.mediaType} />
-          ))}
           <MediaRow title="Nouveaux films" items={newMovies} mediaType="MOVIE" />
           <MediaRow title="Nouvelles séries" items={newShows} mediaType="TV" />
           <MediaRow title="Films populaires" items={popMovies} mediaType="MOVIE" />
           <MediaRow title="Séries populaires" items={popShows} mediaType="TV" />
+          {genreRows.map((row) => (
+            <MediaRow key={row.key} title={row.title} items={row.items} mediaType={row.mediaType} />
+          ))}
         </ScrollView>
       )}
     </SafeAreaView>
