@@ -1,5 +1,5 @@
 // ACCUEIL : recommandations, nouveaux films, nouvelles séries, populaires
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ScrollView, View, Text, Image, Pressable, ActivityIndicator, RefreshControl, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../src/services/api";
@@ -12,6 +12,7 @@ import { isLatinMedia } from "../../src/lib/text";
 interface TmdbList {
   results: TmdbMedia[];
 }
+interface LibraryItem { tmdbId: number; mediaType: MediaType; status: string }
 interface Genre { id: number; name: string; count: number }
 interface GenreRow { key: string; title: string; mediaType: MediaType; items: TmdbMedia[] }
 
@@ -27,7 +28,6 @@ const GREETINGS = [
   "Cap sur des galaxies inexplorées",
   "Une odyssée stellaire t'attend",
 ];
-const latin = (list: TmdbMedia[]) => list.filter(isLatinMedia);
 const pickGreeting = () => GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
 
 export default function HomeScreen() {
@@ -40,23 +40,43 @@ export default function HomeScreen() {
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [genreRows, setGenreRows] = useState<GenreRow[]>([]);
+  const excludeRef = useRef<Set<string>>(new Set());
 
   // Récupère les données sans toucher à l'état "chargement" plein écran
+  // retire les titres non-latins ET ceux déjà vus / séries en cours ou à jour
+  const clean = useCallback((list: TmdbMedia[], mediaType: MediaType) => {
+    return list.filter(
+      (m) => isLatinMedia(m) && !excludeRef.current.has(`${mediaType}-${m.id}`)
+    );
+  }, []);
+
   const fetchData = useCallback(async () => {
-    const results = await Promise.allSettled([
-      api.get<TmdbList>("/tmdb/movies/new"),
-      api.get<TmdbList>("/tmdb/tv/new"),
-      api.get<TmdbList>("/tmdb/movies/popular"),
-      api.get<TmdbList>("/tmdb/tv/popular"),
+    const [lib, results] = await Promise.all([
+      api.get<LibraryItem[]>("/library").catch(() => [] as LibraryItem[]),
+      Promise.allSettled([
+        api.get<TmdbList>("/tmdb/movies/new"),
+        api.get<TmdbList>("/tmdb/tv/new"),
+        api.get<TmdbList>("/tmdb/movies/popular"),
+        api.get<TmdbList>("/tmdb/tv/popular"),
+      ]),
     ]);
+    excludeRef.current = new Set(
+      lib
+        .filter(
+          (l) =>
+            (l.mediaType === "MOVIE" && l.status === "COMPLETED") ||
+            (l.mediaType === "TV" && (l.status === "WATCHING" || l.status === "COMPLETED"))
+        )
+        .map((l) => `${l.mediaType}-${l.tmdbId}`)
+    );
     const [nm, ns, pm, ps] = results;
-    if (nm.status === "fulfilled") setNewMovies(latin(nm.value.results));
-    if (ns.status === "fulfilled") setNewShows(latin(ns.value.results));
-    if (pm.status === "fulfilled") setPopMovies(latin(pm.value.results));
-    if (ps.status === "fulfilled") setPopShows(latin(ps.value.results));
+    if (nm.status === "fulfilled") setNewMovies(clean(nm.value.results, "MOVIE"));
+    if (ns.status === "fulfilled") setNewShows(clean(ns.value.results, "TV"));
+    if (pm.status === "fulfilled") setPopMovies(clean(pm.value.results, "MOVIE"));
+    if (ps.status === "fulfilled") setPopShows(clean(ps.value.results, "TV"));
     setError(results.every((r) => r.status === "rejected"));
     loadGenres();
-  }, []);
+  }, [clean]);
 
   // Rangées personnalisées selon les genres les plus regardés
   const loadGenres = useCallback(async () => {
@@ -74,7 +94,7 @@ export default function HomeScreen() {
             key: `${mediaType}-${g.id}`,
             title: `${mediaType === "MOVIE" ? "Films" : "Séries"} · ${g.name}`,
             mediaType,
-            items: latin(d.results ?? []),
+            items: clean(d.results ?? [], mediaType),
           } as GenreRow;
         })
       );
@@ -82,7 +102,7 @@ export default function HomeScreen() {
     } catch {
       setGenreRows([]);
     }
-  }, []);
+  }, [clean]);
 
   // Chargement initial (loader plein écran)
   const load = useCallback(async () => {
