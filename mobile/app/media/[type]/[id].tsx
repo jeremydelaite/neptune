@@ -7,8 +7,6 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   StyleSheet,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -265,14 +263,12 @@ export default function MediaDetailScreen() {
   const tvLabel = allWatched ? "À jour" : wc > 0 ? "En cours" : "À voir";
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-    >
+    <View style={styles.container}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 40 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
       >
         {/* Bannière */}
         <View style={styles.banner}>
@@ -378,7 +374,7 @@ export default function MediaDetailScreen() {
           <Comments mediaType={mediaType} tmdbId={tmdbId} />
         </View>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
