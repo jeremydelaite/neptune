@@ -32,7 +32,15 @@ function shortDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
 }
 
-export function Comments({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: number }) {
+export function Comments({
+  mediaType,
+  tmdbId,
+  onFocusInput,
+}: {
+  mediaType: MediaType;
+  tmdbId: number;
+  onFocusInput?: () => void;
+}) {
   const { user } = useAuth();
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,6 +186,7 @@ export function Comments({ mediaType, tmdbId }: { mediaType: MediaType; tmdbId: 
                       style={[styles.editInput, noOutline]}
                       value={editText}
                       onChangeText={setEditText}
+                      onFocus={onFocusInput}
                       multiline
                       autoFocus
                     />
