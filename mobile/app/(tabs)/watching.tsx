@@ -114,8 +114,7 @@ export default function WatchingScreen() {
     );
     // Commencées mais pas terminées
     const inProgress = built.filter(
-      (b): b is BaseInfo =>
-        b !== null && b.watchedCount > 0 && b.watchedCount < b.total && b.nextSeason !== null
+      (b): b is BaseInfo => b !== null && b.watchedCount > 0 && b.nextSeason !== null
     );
 
     // Récupère le VRAI prochain épisode (une requête saison par série en cours)

@@ -48,6 +48,13 @@ const regularTotal = (seasons: TmdbSeason[] = []) =>
   regularSeasons(seasons).reduce((n, s) => n + s.episode_count, 0);
 const watchedRegularCount = (set: Set<string>) =>
   [...set].filter((k) => Number(k.split("-")[0]) >= 1).length;
+const seasonWatchedCount = (set: Set<string>, season: number) =>
+  [...set].filter((k) => Number(k.split("-")[0]) === season).length;
+// À jour seulement si CHAQUE saison régulière est complète (robuste aux quirks TMDB)
+const allSeasonsComplete = (seasons: TmdbSeason[] = [], set: Set<string>) => {
+  const reg = regularSeasons(seasons);
+  return reg.length > 0 && reg.every((s) => seasonWatchedCount(set, s.season_number) >= s.episode_count);
+};
 
 export default function MediaDetailScreen() {
   const { type, id } = useLocalSearchParams<{ type: string; id: string }>();
@@ -109,9 +116,9 @@ export default function MediaDetailScreen() {
   // Statut auto d'une série d'après les épisodes vus
   function syncStatus(set: Set<string>) {
     if (mediaType !== "TV") return;
-    const total = regularTotal(data?.seasons);
     const wc = watchedRegularCount(set);
-    const st: TrackStatus = wc === 0 ? "TO_WATCH" : total > 0 && wc >= total ? "COMPLETED" : "WATCHING";
+    const complete = allSeasonsComplete(data?.seasons, set);
+    const st: TrackStatus = wc === 0 ? "TO_WATCH" : complete ? "COMPLETED" : "WATCHING";
     if (st === statusRef.current) return;
     updateStatus(st);
     api.post("/library", { tmdbId, mediaType, status: st }).catch(() => {});
@@ -257,9 +264,8 @@ export default function MediaDetailScreen() {
   const year = (data.release_date ?? data.first_air_date ?? "").slice(0, 4);
   const backdrop = tmdbImage(data.backdrop_path, "w780");
 
-  const total = regularTotal(data.seasons);
   const wc = watchedRegularCount(watched);
-  const allWatched = total > 0 && wc >= total;
+  const allWatched = allSeasonsComplete(data.seasons, watched);
   const tvLabel = allWatched ? "À jour" : wc > 0 ? "En cours" : "À voir";
 
   return (
