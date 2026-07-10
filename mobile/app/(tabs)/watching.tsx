@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Check, RotateCw } from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import { api, tmdbImage } from "../../src/services/api";
 import { ProgressBar } from "../../src/components/ui/ProgressBar";
 import { colors } from "../../src/theme/colors";
@@ -242,13 +242,6 @@ export default function WatchingScreen() {
     <SafeAreaView style={styles.safe} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.screenTitle}>En cours</Text>
-        <Pressable onPress={onRefresh} disabled={refreshing} hitSlop={8} style={styles.refreshBtn}>
-          {refreshing ? (
-            <ActivityIndicator size="small" color={colors.accentPastel} />
-          ) : (
-            <RotateCw size={18} color={colors.accentPastel} />
-          )}
-        </Pressable>
       </View>
       {loading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.accent} />
@@ -282,15 +275,7 @@ export default function WatchingScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 4,
-    paddingBottom: 10,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  refreshBtn: { width: 34, height: 34, alignItems: "center", justifyContent: "center" },
+  header: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10 },
   screenTitle: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
   list: { paddingHorizontal: 16, paddingBottom: 100, gap: 12 },
   card: {
