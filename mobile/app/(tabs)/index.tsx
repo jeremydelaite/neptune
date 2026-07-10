@@ -1,6 +1,6 @@
 // ACCUEIL : recommandations, nouveaux films, nouvelles séries, populaires
 import { useCallback, useEffect, useState } from "react";
-import { ScrollView, View, Text, Pressable, ActivityIndicator, RefreshControl, StyleSheet } from "react-native";
+import { ScrollView, View, Text, Image, Pressable, ActivityIndicator, RefreshControl, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../src/services/api";
 import { MediaRow } from "../../src/components/media/MediaRow";
@@ -93,6 +93,11 @@ export default function HomeScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
           }
         >
+          <Image
+            source={require("../../assets/logo.png")}
+            style={styles.logo}
+            resizeMode="contain"
+          />
           <Text style={styles.hello}>{greeting}</Text>
           <MediaRow title="Nouveaux films" items={newMovies} mediaType="MOVIE" />
           <MediaRow title="Nouvelles séries" items={newShows} mediaType="TV" />
@@ -107,6 +112,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   content: { padding: 16, paddingBottom: 100 },
+  logo: { width: 150, height: 150 / 3.89, alignSelf: "flex-start", marginBottom: 18 },
   hello: { fontFamily: fonts.heading, fontSize: 24, color: colors.text, marginBottom: 20 },
   centered: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
   hint: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, textAlign: "center" },
