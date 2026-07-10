@@ -7,6 +7,7 @@ import { MediaRow } from "../../src/components/media/MediaRow";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
 import type { TmdbMedia, MediaType } from "../../src/types";
+import { isLatinMedia } from "../../src/lib/text";
 
 interface TmdbList {
   results: TmdbMedia[];
@@ -26,6 +27,7 @@ const GREETINGS = [
   "Cap sur des galaxies inexplorées",
   "Une odyssée stellaire t'attend",
 ];
+const latin = (list: TmdbMedia[]) => list.filter(isLatinMedia);
 const pickGreeting = () => GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
 
 export default function HomeScreen() {
@@ -48,10 +50,10 @@ export default function HomeScreen() {
       api.get<TmdbList>("/tmdb/tv/popular"),
     ]);
     const [nm, ns, pm, ps] = results;
-    if (nm.status === "fulfilled") setNewMovies(nm.value.results);
-    if (ns.status === "fulfilled") setNewShows(ns.value.results);
-    if (pm.status === "fulfilled") setPopMovies(pm.value.results);
-    if (ps.status === "fulfilled") setPopShows(ps.value.results);
+    if (nm.status === "fulfilled") setNewMovies(latin(nm.value.results));
+    if (ns.status === "fulfilled") setNewShows(latin(ns.value.results));
+    if (pm.status === "fulfilled") setPopMovies(latin(pm.value.results));
+    if (ps.status === "fulfilled") setPopShows(latin(ps.value.results));
     setError(results.every((r) => r.status === "rejected"));
     loadGenres();
   }, []);
@@ -72,7 +74,7 @@ export default function HomeScreen() {
             key: `${mediaType}-${g.id}`,
             title: `${mediaType === "MOVIE" ? "Films" : "Séries"} · ${g.name}`,
             mediaType,
-            items: d.results ?? [],
+            items: latin(d.results ?? []),
           } as GenreRow;
         })
       );

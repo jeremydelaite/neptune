@@ -18,6 +18,7 @@ import { PosterCard } from "../../src/components/media/PosterCard";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
 import type { TmdbMedia, MediaType } from "../../src/types";
+import { isLatinMedia } from "../../src/lib/text";
 
 interface TmdbList {
   results: TmdbMedia[];
@@ -69,7 +70,10 @@ export default function SearchScreen() {
         setResults((prev) => {
           const base = append ? prev : [];
           const seen = new Set(base.map((m) => m.id));
-          const merged = [...base, ...data.results.filter((m) => !seen.has(m.id))];
+          const merged = [
+            ...base,
+            ...data.results.filter((m) => !seen.has(m.id) && isLatinMedia(m)),
+          ];
           // Les plus populaires d'abord (évite les films/séries B au titre exact)
           merged.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
           cache.current.set(cacheKey(t, q), {
