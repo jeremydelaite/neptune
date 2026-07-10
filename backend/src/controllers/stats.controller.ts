@@ -86,3 +86,52 @@ export async function getActivity(req: AuthRequest, res: Response) {
 
   res.json({ items: enriched, hasMore });
 }
+
+// GET /stats/top-genres — genres les plus regardés (bibliothèque + notes), par type
+export async function getTopGenres(req: AuthRequest, res: Response) {
+  const userId = req.userId!;
+  const [tracked, rated] = await Promise.all([
+    prisma.trackedItem.findMany({ where: { userId }, select: { tmdbId: true, mediaType: true } }),
+    prisma.rating.findMany({ where: { userId }, select: { tmdbId: true, mediaType: true, score: true } }),
+  ]);
+
+  // Union par (type, id) avec un poids (présence = 1, note ajoutée en bonus)
+  const items = new Map<string, { tmdbId: number; mediaType: "MOVIE" | "TV"; weight: number }>();
+  for (const t of tracked) {
+    const k = `${t.mediaType}-${t.tmdbId}`;
+    items.set(k, { tmdbId: t.tmdbId, mediaType: t.mediaType, weight: (items.get(k)?.weight ?? 0) + 1 });
+  }
+  for (const r of rated) {
+    const k = `${r.mediaType}-${r.tmdbId}`;
+    const w = (items.get(k)?.weight ?? 0) + r.score;
+    items.set(k, { tmdbId: r.tmdbId, mediaType: r.mediaType, weight: w });
+  }
+
+  const movie = new Map<number, { name: string; count: number }>();
+  const tv = new Map<number, { name: string; count: number }>();
+
+  await Promise.all(
+    [...items.values()].slice(0, 120).map(async (it) => {
+      try {
+        const path = it.mediaType === "MOVIE" ? `/movie/${it.tmdbId}` : `/tv/${it.tmdbId}`;
+        const data = (await tmdbFetch(path)) as { genres?: { id: number; name: string }[] };
+        const target = it.mediaType === "MOVIE" ? movie : tv;
+        for (const g of data.genres ?? []) {
+          const cur = target.get(g.id) ?? { name: g.name, count: 0 };
+          cur.count += it.weight;
+          target.set(g.id, cur);
+        }
+      } catch {
+        /* ignore */
+      }
+    })
+  );
+
+  const top = (m: Map<number, { name: string; count: number }>) =>
+    [...m.entries()]
+      .map(([id, v]) => ({ id, name: v.name, count: v.count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+  res.json({ movie: top(movie), tv: top(tv) });
+}

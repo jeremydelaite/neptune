@@ -27,6 +27,26 @@ router.get("/search/tv", async (req, res) =>
   )
 );
 
+// Découverte par genre (rangées personnalisées)
+router.get("/discover/movie", async (req, res) =>
+  res.json(
+    await tmdbFetch("/discover/movie", {
+      with_genres: String(req.query.genre ?? ""),
+      sort_by: "popularity.desc",
+      "vote_count.gte": "80",
+    })
+  )
+);
+router.get("/discover/tv", async (req, res) =>
+  res.json(
+    await tmdbFetch("/discover/tv", {
+      with_genres: String(req.query.genre ?? ""),
+      sort_by: "popularity.desc",
+      "vote_count.gte": "80",
+    })
+  )
+);
+
 // Fiche détail + saisons
 router.get("/movie/:id", async (req, res) => res.json(await tmdbFetch(`/movie/${req.params.id}`)));
 router.get("/tv/:id", async (req, res) => res.json(await tmdbFetch(`/tv/${req.params.id}`)));

@@ -6,11 +6,13 @@ import { api } from "../../src/services/api";
 import { MediaRow } from "../../src/components/media/MediaRow";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
-import type { TmdbMedia } from "../../src/types";
+import type { TmdbMedia, MediaType } from "../../src/types";
 
 interface TmdbList {
   results: TmdbMedia[];
 }
+interface Genre { id: number; name: string; count: number }
+interface GenreRow { key: string; title: string; mediaType: MediaType; items: TmdbMedia[] }
 
 // Accroches de l'Accueil — une au hasard à chaque ouverture (thème spatial / Neptune)
 const GREETINGS = [
@@ -35,6 +37,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [genreRows, setGenreRows] = useState<GenreRow[]>([]);
 
   // Récupère les données sans toucher à l'état "chargement" plein écran
   const fetchData = useCallback(async () => {
@@ -50,6 +53,33 @@ export default function HomeScreen() {
     if (pm.status === "fulfilled") setPopMovies(pm.value.results);
     if (ps.status === "fulfilled") setPopShows(ps.value.results);
     setError(results.every((r) => r.status === "rejected"));
+    loadGenres();
+  }, []);
+
+  // Rangées personnalisées selon les genres les plus regardés
+  const loadGenres = useCallback(async () => {
+    try {
+      const tg = await api.get<{ movie: Genre[]; tv: Genre[] }>("/stats/top-genres");
+      const picks = [
+        ...tg.movie.slice(0, 2).map((g) => ({ mediaType: "MOVIE" as MediaType, g })),
+        ...tg.tv.slice(0, 2).map((g) => ({ mediaType: "TV" as MediaType, g })),
+      ];
+      const rows = await Promise.all(
+        picks.map(async ({ mediaType, g }) => {
+          const path = mediaType === "MOVIE" ? "movie" : "tv";
+          const d = await api.get<TmdbList>(`/tmdb/discover/${path}?genre=${g.id}`);
+          return {
+            key: `${mediaType}-${g.id}`,
+            title: `${mediaType === "MOVIE" ? "Films" : "Séries"} · ${g.name}`,
+            mediaType,
+            items: d.results ?? [],
+          } as GenreRow;
+        })
+      );
+      setGenreRows(rows.filter((r) => r.items.length > 0));
+    } catch {
+      setGenreRows([]);
+    }
   }, []);
 
   // Chargement initial (loader plein écran)
@@ -99,6 +129,9 @@ export default function HomeScreen() {
             resizeMode="contain"
           />
           <Text style={styles.hello}>{greeting}</Text>
+          {genreRows.map((row) => (
+            <MediaRow key={row.key} title={row.title} items={row.items} mediaType={row.mediaType} />
+          ))}
           <MediaRow title="Nouveaux films" items={newMovies} mediaType="MOVIE" />
           <MediaRow title="Nouvelles séries" items={newShows} mediaType="TV" />
           <MediaRow title="Films populaires" items={popMovies} mediaType="MOVIE" />
