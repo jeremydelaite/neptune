@@ -81,7 +81,8 @@ export default function HomeScreen() {
         .filter(
           (l) =>
             (l.mediaType === "MOVIE" && l.status === "COMPLETED") ||
-            (l.mediaType === "TV" && (l.status === "WATCHING" || l.status === "COMPLETED"))
+            (l.mediaType === "TV" &&
+              (l.status === "WATCHING" || l.status === "COMPLETED" || l.status === "ARCHIVED"))
         )
         .map((l) => `${l.mediaType}-${l.tmdbId}`)
     );
