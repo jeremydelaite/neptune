@@ -1,18 +1,20 @@
 // VU : films vus (COMPLETED) + séries en cours (WATCHING) ou à jour (COMPLETED)
-// Filtres Tout/Films/Séries + scroll infini (détails TMDB paginés).
-import { useCallback, useRef, useState } from "react";
+// Filtres Tout/Films/Séries + recherche (dès 2 lettres) + scroll infini.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
+  TextInput,
   Pressable,
   FlatList,
   ActivityIndicator,
   StyleSheet,
+  Platform,
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, Search, X } from "lucide-react-native";
 import { api } from "../src/services/api";
 import { PosterCard } from "../src/components/media/PosterCard";
 import { colors } from "../src/theme/colors";
@@ -33,6 +35,8 @@ type Filter = "ALL" | "MOVIE" | "TV";
 const GAP = 12;
 const PADDING = 16;
 const PAGE = 12;
+const noOutline = Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : null;
+const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 export default function WatchedScreen() {
   const router = useRouter();
@@ -43,9 +47,11 @@ export default function WatchedScreen() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState<Filter>("ALL");
+  const [query, setQuery] = useState("");
+  const [focused, setFocused] = useState(false);
 
-  const allRef = useRef<LibraryItem[]>([]); // tous les "vus"
-  const idsRef = useRef<LibraryItem[]>([]); // sous-ensemble filtré
+  const allRef = useRef<LibraryItem[]>([]);
+  const idsRef = useRef<LibraryItem[]>([]);
   const cursorRef = useRef(0);
   const busyRef = useRef(false);
 
@@ -77,7 +83,22 @@ export default function WatchedScreen() {
     busyRef.current = false;
   }, [enrich]);
 
-  // (re)construit la liste selon le filtre choisi
+  // Charge toutes les pages restantes (pour que la recherche soit complète)
+  const loadAll = useCallback(async () => {
+    while (cursorRef.current < idsRef.current.length) {
+      if (busyRef.current) {
+        await new Promise((r) => setTimeout(r, 40));
+        continue;
+      }
+      busyRef.current = true;
+      const slice = idsRef.current.slice(cursorRef.current, cursorRef.current + PAGE);
+      cursorRef.current += slice.length;
+      const built = await enrich(slice);
+      setEntries((prev) => [...prev, ...built]);
+      busyRef.current = false;
+    }
+  }, [enrich]);
+
   const rebuild = useCallback(
     async (f: Filter) => {
       idsRef.current = allRef.current.filter((l) => f === "ALL" || l.mediaType === f);
@@ -112,6 +133,11 @@ export default function WatchedScreen() {
     }, [load])
   );
 
+  // Dès qu'on cherche (>= 2 lettres), on charge tout pour une recherche complète
+  useEffect(() => {
+    if (query.trim().length >= 2) loadAll();
+  }, [query, filter, loadAll]);
+
   function selectFilter(f: Filter) {
     if (f === filter) return;
     setFilter(f);
@@ -123,7 +149,15 @@ export default function WatchedScreen() {
     else router.replace("/(tabs)/profile");
   };
 
+  const q = query.trim();
+  const filtered = useMemo(() => {
+    if (q.length < 2) return entries;
+    const nq = norm(q);
+    return entries.filter((e) => norm(e.media.title ?? e.media.name ?? "").includes(nq));
+  }, [entries, q]);
+
   const hasMore = cursorRef.current < idsRef.current.length;
+  const searching = q.length >= 2;
   const TABS: { key: Filter; label: string }[] = [
     { key: "ALL", label: "Tout" },
     { key: "MOVIE", label: "Films" },
@@ -136,7 +170,30 @@ export default function WatchedScreen() {
         <Pressable onPress={goBack} hitSlop={16} style={styles.back}>
           <ArrowLeft size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.title}>Vu</Text>
+        <Text style={styles.screenTitle}>Vu</Text>
+      </View>
+
+      <View style={styles.searchWrap}>
+        <View style={[styles.searchBar, focused && styles.searchBarFocused]}>
+          <Search size={18} color={focused ? colors.accentPastel : colors.dim} />
+          <TextInput
+            style={[styles.input, noOutline]}
+            placeholder="Rechercher dans tes vus…"
+            placeholderTextColor={colors.dim}
+            value={query}
+            onChangeText={setQuery}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery("")} hitSlop={8}>
+              <X size={18} color={colors.dim} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <View style={styles.tabs}>
@@ -158,19 +215,22 @@ export default function WatchedScreen() {
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.accent} />
       ) : (
         <FlatList
-          data={entries}
+          data={filtered}
           keyExtractor={(e) => `${e.mediaType}-${e.media.id}`}
           numColumns={3}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
-          onEndReached={loadNext}
+          onEndReached={searching ? undefined : loadNext}
           onEndReachedThreshold={0.5}
+          keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
             <PosterCard media={item.media} mediaType={item.mediaType} width={cardWidth} posterSize="w185" />
           )}
           ListEmptyComponent={
             <Text style={styles.empty}>
-              {filter === "MOVIE"
+              {searching
+                ? `Aucun résultat pour « ${q} ».`
+                : filter === "MOVIE"
                 ? "Aucun film vu pour l'instant."
                 : filter === "TV"
                 ? "Aucune série commencée pour l'instant."
@@ -178,7 +238,7 @@ export default function WatchedScreen() {
             </Text>
           }
           ListFooterComponent={
-            loadingMore && hasMore ? (
+            loadingMore && hasMore && !searching ? (
               <ActivityIndicator style={{ marginVertical: 16 }} color={colors.accent} />
             ) : null
           }
@@ -190,7 +250,7 @@ export default function WatchedScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
-  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 6 },
+  header: { flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 8 },
   back: {
     width: 42,
     height: 42,
@@ -201,7 +261,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.line,
   },
-  title: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
+  screenTitle: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
+
+  searchWrap: { paddingHorizontal: PADDING, paddingBottom: 10 },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    height: 44,
+  },
+  searchBarFocused: { borderColor: colors.accent },
+  input: { flex: 1, color: colors.text, fontFamily: fonts.body, fontSize: 14, height: "100%" },
 
   tabs: { flexDirection: "row", gap: 8, paddingHorizontal: PADDING, paddingBottom: 10 },
   tab: {
