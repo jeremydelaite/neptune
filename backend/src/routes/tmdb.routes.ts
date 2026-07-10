@@ -34,6 +34,7 @@ router.get("/discover/movie", async (req, res) =>
       with_genres: String(req.query.genre ?? ""),
       sort_by: "popularity.desc",
       "vote_count.gte": "80",
+      include_adult: "false",
     })
   )
 );
@@ -43,6 +44,7 @@ router.get("/discover/tv", async (req, res) =>
       with_genres: String(req.query.genre ?? ""),
       sort_by: "popularity.desc",
       "vote_count.gte": "80",
+      include_adult: "false",
     })
   )
 );

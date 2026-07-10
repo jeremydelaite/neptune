@@ -46,7 +46,7 @@ export default function HomeScreen() {
   // retire les titres non-latins ET ceux déjà vus / séries en cours ou à jour
   const clean = useCallback((list: TmdbMedia[], mediaType: MediaType) => {
     return list.filter(
-      (m) => isLatinMedia(m) && !excludeRef.current.has(`${mediaType}-${m.id}`)
+      (m) => isLatinMedia(m) && !m.adult && !excludeRef.current.has(`${mediaType}-${m.id}`)
     );
   }, []);
 

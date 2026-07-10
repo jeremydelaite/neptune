@@ -72,7 +72,7 @@ export default function SearchScreen() {
           const seen = new Set(base.map((m) => m.id));
           const merged = [
             ...base,
-            ...data.results.filter((m) => !seen.has(m.id) && isLatinMedia(m)),
+            ...data.results.filter((m) => !seen.has(m.id) && isLatinMedia(m) && !m.adult),
           ];
           // Les plus populaires d'abord (évite les films/séries B au titre exact)
           merged.sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
