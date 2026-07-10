@@ -295,13 +295,11 @@ export default function WatchingScreen() {
         />
       )}
 
-      {archivedCount > 0 && (
-        <Pressable style={styles.archiveBar} onPress={() => router.push("/archives")}>
-          <Package size={18} color="#FF9D4D" />
-          <Text style={styles.archiveEntryText}>Séries archivées ({archivedCount})</Text>
-          <ChevronRight size={18} color={colors.dim} />
-        </Pressable>
-      )}
+      <Pressable style={styles.archiveBar} onPress={() => router.push("/archives")}>
+        <Package size={18} color="#FF9D4D" />
+        <Text style={styles.archiveEntryText}>Séries archivées ({archivedCount})</Text>
+        <ChevronRight size={18} color={colors.dim} />
+      </Pressable>
     </SafeAreaView>
   );
 }
@@ -314,7 +312,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 12,
     right: 12,
-    bottom: 90,
+    bottom: 108,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
