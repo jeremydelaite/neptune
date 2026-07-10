@@ -68,7 +68,12 @@ export default function MediaDetailScreen() {
     if (router.canGoBack()) router.back();
     else router.replace("/(tabs)");
   };
-  const goHome = () => router.replace("/(tabs)");
+  const goHome = () => {
+    // vide toute la pile de fiches empilées avant de rejoindre l'accueil,
+    // sinon le swipe arrière ramène sur les fiches précédentes
+    if (router.canDismiss()) router.dismissAll();
+    router.replace("/(tabs)");
+  };
   const cameFromSimilar = from === "similar";
 
   const [data, setData] = useState<MediaDetail | null>(null);
