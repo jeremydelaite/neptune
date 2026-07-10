@@ -6,7 +6,7 @@ import { AuthRequest } from "../middleware/auth";
 const upsertSchema = z.object({
   tmdbId: z.number().int().positive(),
   mediaType: z.enum(["MOVIE", "TV"]),
-  status: z.enum(["TO_WATCH", "WATCHING", "COMPLETED", "DROPPED"]),
+  status: z.enum(["TO_WATCH", "WATCHING", "COMPLETED", "DROPPED", "ARCHIVED"]),
 });
 
 // GET /library?status=WATCHING (filtre optionnel)

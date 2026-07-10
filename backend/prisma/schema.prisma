@@ -26,6 +26,7 @@ enum TrackStatus {
   WATCHING // En cours
   COMPLETED // Vu / Terminée
   DROPPED // Abandonnée
+  ARCHIVED // Archivée (masquée de "En cours")
 }
 
 // ---------- MODÈLES ----------

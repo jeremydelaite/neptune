@@ -12,9 +12,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Check } from "lucide-react-native";
+import { Check, Archive, Package, ChevronRight } from "lucide-react-native";
 import { api, tmdbImage } from "../../src/services/api";
 import { ProgressBar } from "../../src/components/ui/ProgressBar";
+import { SwipeArchive } from "../../src/components/ui/SwipeArchive";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
 
@@ -86,6 +87,7 @@ export default function WatchingScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [checking, setChecking] = useState<number | null>(null);
+  const [archivedCount, setArchivedCount] = useState(0);
 
   // Récupère toutes les séries de la bibliothèque et ne garde que celles
   // commencées mais pas terminées (peu importe le statut stocké).
@@ -95,9 +97,14 @@ export default function WatchingScreen() {
       api.get<LibraryItem[]>("/library").catch(() => [] as LibraryItem[]),
       api.get<number[]>("/episodes/shows").catch(() => [] as number[]),
     ]);
+    const archived = new Set(
+      library.filter((l) => l.mediaType === "TV" && l.status === "ARCHIVED").map((l) => l.tmdbId)
+    );
+    setArchivedCount(archived.size);
     const ids = new Set<number>();
     library.filter((l) => l.mediaType === "TV").forEach((l) => ids.add(l.tmdbId));
     watchedShowIds.forEach((id) => ids.add(id));
+    archived.forEach((id) => ids.delete(id)); // séries archivées exclues de "En cours"
 
     const built = await Promise.all(
       [...ids].map(async (tmdbId) => {
@@ -194,9 +201,22 @@ export default function WatchingScreen() {
     setChecking(null);
   }
 
+  async function archive(id: number) {
+    setShows((prev) => prev.filter((s) => s.id !== id));
+    setArchivedCount((c) => c + 1);
+    await api.post("/library", { tmdbId: id, mediaType: "TV", status: "ARCHIVED" }).catch(() => {});
+  }
+
   const renderItem = ({ item }: { item: Show }) => {
     const progress = item.total > 0 ? item.watchedCount / item.total : 0;
     return (
+      <SwipeArchive
+        onAction={() => archive(item.id)}
+        bgColor="rgba(255,138,61,0.18)"
+        tintColor="#FF9D4D"
+        label="Archiver"
+        icon={<Archive size={18} color="#FF9D4D" />}
+      >
       <View style={styles.card}>
         <Pressable onPress={() => router.push(`/media/tv/${item.id}`)}>
           {item.poster ? (
@@ -234,6 +254,7 @@ export default function WatchingScreen() {
           )}
         </Pressable>
       </View>
+      </SwipeArchive>
     );
   };
 
@@ -261,6 +282,20 @@ export default function WatchingScreen() {
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
           }
+          ListHeaderComponent={
+            shows.length > 0 ? (
+              <Text style={styles.hint}>Glisse une série vers la gauche pour l'archiver.</Text>
+            ) : null
+          }
+          ListFooterComponent={
+            archivedCount > 0 ? (
+              <Pressable style={styles.archiveEntry} onPress={() => router.push("/archives")}>
+                <Package size={18} color="#FF9D4D" />
+                <Text style={styles.archiveEntryText}>Séries archivées ({archivedCount})</Text>
+                <ChevronRight size={18} color={colors.dim} />
+              </Pressable>
+            ) : null
+          }
           ListEmptyComponent={
             <Text style={styles.empty}>
               Aucune série en cours. Commence à cocher des épisodes d'une série pour la voir apparaître ici.
@@ -275,6 +310,19 @@ export default function WatchingScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10 },
+  hint: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginBottom: 10 },
+  archiveEntry: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 6,
+    padding: 14,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  archiveEntryText: { flex: 1, fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
   screenTitle: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
   list: { paddingHorizontal: 16, paddingBottom: 100, gap: 12 },
   card: {
