@@ -1,6 +1,6 @@
 // ACCUEIL : recommandations, nouveaux films, nouvelles séries, populaires
 import { useCallback, useEffect, useState } from "react";
-import { ScrollView, View, Text, Pressable, ActivityIndicator, StyleSheet } from "react-native";
+import { ScrollView, View, Text, Pressable, ActivityIndicator, RefreshControl, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { api } from "../../src/services/api";
 import { MediaRow } from "../../src/components/media/MediaRow";
@@ -34,6 +34,7 @@ export default function HomeScreen() {
   const [greeting] = useState(pickGreeting);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +53,12 @@ export default function HomeScreen() {
     setError(results.every((r) => r.status === "rejected"));
     setLoading(false);
   }, []);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   useEffect(() => {
     load();
@@ -73,7 +80,12 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
+          }
+        >
           <Text style={styles.hello}>{greeting}</Text>
           <MediaRow title="Nouveaux films" items={newMovies} mediaType="MOVIE" />
           <MediaRow title="Nouvelles séries" items={newShows} mediaType="TV" />

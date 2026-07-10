@@ -6,6 +6,7 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  RefreshControl,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -65,6 +66,7 @@ export default function ProfileScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reported, setReported] = useState<ReportedComment[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -112,6 +114,27 @@ export default function ProfileScreen() {
     await api.post(`/comments/${id}/dismiss`, {}).catch(() => {});
   }
 
+  async function refreshAll() {
+    setRefreshing(true);
+    try {
+      const [s, a] = await Promise.all([
+        api.get<Stats>("/stats"),
+        api.get<{ items: ActivityItem[]; hasMore: boolean }>("/stats/activity?offset=0&limit=5"),
+      ]);
+      setStats(s);
+      setActivity(a.items ?? []);
+      setHasMoreActivity(a.hasMore ?? false);
+      if (user?.isAdmin) {
+        const r = await api.get<ReportedComment[]>("/comments/reported").catch(() => []);
+        setReported(r);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setRefreshing(false);
+    }
+  }
+
   async function loadMoreActivity() {
     setLoadingMore(true);
     try {
@@ -131,7 +154,12 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={["top"]}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={refreshAll} tintColor={colors.accent} />
+        }
+      >
         {/* En-tête profil */}
         <View style={styles.profileRow}>
           <View style={styles.avatar}>

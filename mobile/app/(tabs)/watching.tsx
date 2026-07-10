@@ -264,6 +264,7 @@ export default function WatchingScreen() {
           data={shows}
           keyExtractor={(s) => String(s.id)}
           contentContainerStyle={styles.list}
+          alwaysBounceVertical
           renderItem={renderItem}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.accent} />
