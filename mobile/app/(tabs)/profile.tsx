@@ -173,15 +173,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Accès à la liste À voir */}
-        <Pressable style={styles.linkCard} onPress={() => router.push("/watchlist")}>
-          <View style={styles.linkIcon}>
-            <Bookmark size={18} color={colors.accentPastel} />
-          </View>
-          <Text style={styles.linkLabel}>Ma liste « À voir »</Text>
-          <ChevronRight size={20} color={colors.dim} />
-        </Pressable>
-
         {loading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={colors.accent} />
         ) : !stats ? (
@@ -206,6 +197,15 @@ export default function ProfileScreen() {
                 <Text style={styles.statLabel}>De séries</Text>
               </View>
             </View>
+
+            {/* Accès à la liste À voir */}
+            <Pressable style={styles.linkCard} onPress={() => router.push("/watchlist")}>
+              <View style={styles.linkIcon}>
+                <Bookmark size={18} color={colors.accentPastel} />
+              </View>
+              <Text style={styles.linkLabel}>Ma liste « À voir »</Text>
+              <ChevronRight size={20} color={colors.dim} />
+            </Pressable>
 
             {/* Répartition des notes */}
             <View style={styles.card}>
