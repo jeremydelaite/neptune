@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, ChevronRight } from "lucide-react-native";
+import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
@@ -198,14 +198,21 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Accès à la liste À voir */}
-            <Pressable style={styles.linkCard} onPress={() => router.push("/watchlist")}>
-              <View style={styles.linkIcon}>
-                <Bookmark size={18} color={colors.accentPastel} />
-              </View>
-              <Text style={styles.linkLabel}>Ma liste « À voir »</Text>
-              <ChevronRight size={20} color={colors.dim} />
-            </Pressable>
+            {/* Accès aux listes À voir / Vu */}
+            <View style={styles.linksRow}>
+              <Pressable style={styles.linkCard} onPress={() => router.push("/watchlist")}>
+                <View style={styles.linkIcon}>
+                  <Bookmark size={18} color={colors.accentPastel} />
+                </View>
+                <Text style={styles.linkLabel}>À voir</Text>
+              </Pressable>
+              <Pressable style={styles.linkCard} onPress={() => router.push("/watched")}>
+                <View style={styles.linkIcon}>
+                  <Eye size={18} color={colors.accentPastel} />
+                </View>
+                <Text style={styles.linkLabel}>Vu</Text>
+              </Pressable>
+            </View>
 
             {/* Répartition des notes */}
             <View style={styles.card}>
@@ -419,16 +426,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   moreText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.accentPastel },
+  linksRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
   linkCard: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 10,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.line,
     borderRadius: radius.lg,
     padding: 14,
-    marginBottom: 14,
   },
   linkIcon: {
     width: 34,
