@@ -1,5 +1,5 @@
 // COMPTE : profil + statistiques poussées (GET /stats, /stats/activity)
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -67,11 +67,12 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [reported, setReported] = useState<ReportedComment[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const hasLoaded = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      setLoading(true);
+      if (!hasLoaded.current) setLoading(true); // loader seulement au 1er affichage
       Promise.all([
         api.get<Stats>("/stats"),
         api.get<{ items: ActivityItem[]; hasMore: boolean }>("/stats/activity?offset=0&limit=5"),
@@ -81,8 +82,9 @@ export default function ProfileScreen() {
           setStats(s);
           setActivity(a.items ?? []);
           setHasMoreActivity(a.hasMore ?? false);
+          hasLoaded.current = true;
         })
-        .catch(() => active && setStats(null))
+        .catch(() => active && !hasLoaded.current && setStats(null))
         .finally(() => active && setLoading(false));
       return () => {
         active = false;
