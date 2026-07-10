@@ -16,10 +16,12 @@ import { api, tmdbImage } from "../../../src/services/api";
 import { StatusButtons } from "../../../src/components/media/StatusButtons";
 import { StarRating } from "../../../src/components/ui/StarRating";
 import { SeasonList, epKey, type TmdbSeason } from "../../../src/components/media/SeasonList";
+import { MediaRow } from "../../../src/components/media/MediaRow";
+import { isLatinMedia } from "../../../src/lib/text";
 import { Comments } from "../../../src/components/media/Comments";
 import { colors } from "../../../src/theme/colors";
 import { fonts, radius } from "../../../src/theme/typography";
-import type { MediaType, TrackStatus } from "../../../src/types";
+import type { MediaType, TrackStatus, TmdbMedia } from "../../../src/types";
 
 interface MediaDetail {
   id: number;
@@ -72,6 +74,7 @@ export default function MediaDetailScreen() {
   const [status, setStatus] = useState<TrackStatus | null>(null);
   const [myScore, setMyScore] = useState(0);
   const [watched, setWatched] = useState<Set<string>>(new Set());
+  const [similar, setSimilar] = useState<TmdbMedia[]>([]);
 
   const watchedRef = useRef<Set<string>>(new Set());
   const statusRef = useRef<TrackStatus | null>(null);
@@ -94,8 +97,11 @@ export default function MediaDetailScreen() {
         mediaType === "TV"
           ? api.get<WatchedEp[]>(`/episodes/${id}`).catch(() => [] as WatchedEp[])
           : Promise.resolve<WatchedEp[]>([]),
+        api
+          .get<{ results: TmdbMedia[] }>(`/tmdb/${type}/${id}/similar`)
+          .catch(() => ({ results: [] as TmdbMedia[] })),
       ])
-        .then(([detail, library, rating, eps]) => {
+        .then(([detail, library, rating, eps, sim]) => {
           if (!active) return;
           setData(detail);
           const tracked = library.find((l) => l.tmdbId === tmdbId && l.mediaType === mediaType);
@@ -104,6 +110,9 @@ export default function MediaDetailScreen() {
           const set = new Set(eps.map((e) => epKey(e.seasonNumber, e.episodeNumber)));
           watchedRef.current = set;
           setWatched(set);
+          setSimilar(
+            (sim.results ?? []).filter((m) => m.id !== tmdbId && isLatinMedia(m) && !m.adult).slice(0, 15)
+          );
         })
         .catch(() => active && setData(null))
         .finally(() => active && setLoading(false));
@@ -371,6 +380,13 @@ export default function MediaDetailScreen() {
                 onMarkUpTo={markUpTo}
               />
             </>
+          )}
+
+          {/* Similaires */}
+          {similar.length > 0 && (
+            <View style={{ marginTop: 22 }}>
+              <MediaRow title="Dans le même esprit" items={similar} mediaType={mediaType} />
+            </View>
           )}
 
           {/* Commentaires (film ou série) */}

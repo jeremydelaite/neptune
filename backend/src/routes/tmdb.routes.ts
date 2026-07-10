@@ -54,7 +54,13 @@ router.get("/discover/tv", async (req, res) =>
 
 // Fiche détail + saisons
 router.get("/movie/:id", async (req, res) => res.json(await tmdbFetch(`/movie/${req.params.id}`)));
+router.get("/movie/:id/similar", async (req, res) =>
+  res.json(await tmdbFetch(`/movie/${req.params.id}/recommendations`))
+);
 router.get("/tv/:id", async (req, res) => res.json(await tmdbFetch(`/tv/${req.params.id}`)));
+router.get("/tv/:id/similar", async (req, res) =>
+  res.json(await tmdbFetch(`/tv/${req.params.id}/recommendations`))
+);
 router.get("/tv/:id/season/:n", async (req, res) =>
   res.json(await tmdbFetch(`/tv/${req.params.id}/season/${req.params.n}`))
 );
