@@ -13,9 +13,10 @@ interface Props {
   mediaType: MediaType;
   width?: number;
   posterSize?: "w154" | "w185" | "w342" | "w780";
+  extraParams?: Record<string, string>;
 }
 
-export function PosterCard({ media, mediaType, width = 106, posterSize = "w342" }: Props) {
+export function PosterCard({ media, mediaType, width = 106, posterSize = "w342", extraParams }: Props) {
   const router = useRouter();
   const title = media.title ?? media.name ?? "";
   const year = (media.release_date ?? media.first_air_date ?? "").slice(0, 4);
@@ -24,7 +25,12 @@ export function PosterCard({ media, mediaType, width = 106, posterSize = "w342" 
   return (
     <Pressable
       style={{ width }}
-      onPress={() => router.push(`/media/${mediaType.toLowerCase()}/${media.id}`)}
+      onPress={() => {
+        const qs = extraParams
+          ? "?" + new URLSearchParams(extraParams).toString()
+          : "";
+        router.push(`/media/${mediaType.toLowerCase()}/${media.id}${qs}`);
+      }}
     >
       <View style={[styles.poster, { width, height: width * 1.45 }]}>
         {uri ? (

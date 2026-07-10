@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter, useFocusEffect } from "expo-router";
-import { ArrowLeft, Star } from "lucide-react-native";
+import { ArrowLeft, Star, Home } from "lucide-react-native";
 import { api, tmdbImage } from "../../../src/services/api";
 import { StatusButtons } from "../../../src/components/media/StatusButtons";
 import { StarRating } from "../../../src/components/ui/StarRating";
@@ -59,7 +59,7 @@ const allSeasonsComplete = (seasons: TmdbSeason[] = [], set: Set<string>) => {
 };
 
 export default function MediaDetailScreen() {
-  const { type, id } = useLocalSearchParams<{ type: string; id: string }>();
+  const { type, id, from } = useLocalSearchParams<{ type: string; id: string; from?: string }>();
   const router = useRouter();
   const mediaType: MediaType = type === "tv" ? "TV" : "MOVIE";
   const tmdbId = Number(id);
@@ -68,6 +68,8 @@ export default function MediaDetailScreen() {
     if (router.canGoBack()) router.back();
     else router.replace("/(tabs)");
   };
+  const goHome = () => router.replace("/(tabs)");
+  const cameFromSimilar = from === "similar";
 
   const [data, setData] = useState<MediaDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,6 +78,7 @@ export default function MediaDetailScreen() {
   const [watched, setWatched] = useState<Set<string>>(new Set());
   const [similar, setSimilar] = useState<TmdbMedia[]>([]);
 
+  const hasLoaded = useRef(false);
   const watchedRef = useRef<Set<string>>(new Set());
   const statusRef = useRef<TrackStatus | null>(null);
 
@@ -87,7 +90,7 @@ export default function MediaDetailScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      setLoading(true);
+      if (!hasLoaded.current) setLoading(true);
       Promise.all([
         api.get<MediaDetail>(`/tmdb/${type}/${id}`),
         api
@@ -129,7 +132,10 @@ export default function MediaDetailScreen() {
               .slice(0, 15)
           );
         })
-        .catch(() => active && setData(null))
+        .then(() => {
+          hasLoaded.current = true;
+        })
+        .catch(() => active && !hasLoaded.current && setData(null))
         .finally(() => active && setLoading(false));
       return () => {
         active = false;
@@ -400,7 +406,7 @@ export default function MediaDetailScreen() {
           {/* Similaires */}
           {similar.length > 0 && (
             <View style={{ marginTop: 22 }}>
-              <MediaRow title="Dans le même esprit" items={similar} mediaType={mediaType} />
+              <MediaRow title="Dans le même esprit" items={similar} mediaType={mediaType} itemParams={{ from: "similar" }} />
             </View>
           )}
 
@@ -413,6 +419,13 @@ export default function MediaDetailScreen() {
       <Pressable style={styles.back} onPress={goBack} hitSlop={16}>
         <ArrowLeft size={26} color="#fff" />
       </Pressable>
+
+      {/* Bouton accueil fixe (droite) — dès qu'on navigue via les similaires */}
+      {cameFromSimilar && (
+        <Pressable style={styles.home} onPress={goHome} hitSlop={16}>
+          <Home size={24} color="#fff" />
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -429,6 +442,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 48,
     left: 16,
+    width: 50,
+    height: 50,
+    borderRadius: 999,
+    backgroundColor: "rgba(15,17,21,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  home: {
+    position: "absolute",
+    top: 48,
+    right: 16,
     width: 50,
     height: 50,
     borderRadius: 999,

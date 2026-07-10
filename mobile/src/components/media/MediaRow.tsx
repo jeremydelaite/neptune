@@ -10,9 +10,10 @@ interface Props {
   subtitle?: string;
   items: TmdbMedia[];
   mediaType: MediaType;
+  itemParams?: Record<string, string>;
 }
 
-export function MediaRow({ title, subtitle, items, mediaType }: Props) {
+export function MediaRow({ title, subtitle, items, mediaType, itemParams }: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
@@ -21,7 +22,7 @@ export function MediaRow({ title, subtitle, items, mediaType }: Props) {
         horizontal
         data={items}
         keyExtractor={(m) => String(m.id)}
-        renderItem={({ item }) => <PosterCard media={item} mediaType={mediaType} />}
+        renderItem={({ item }) => <PosterCard media={item} mediaType={mediaType} extraParams={itemParams} />}
         contentContainerStyle={{ gap: 10 }}
         showsHorizontalScrollIndicator={false}
       />
