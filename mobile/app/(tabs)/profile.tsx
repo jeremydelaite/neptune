@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2 } from "lucide-react-native";
+import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, ChevronRight } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
@@ -172,6 +172,15 @@ export default function ProfileScreen() {
             <Text style={styles.email}>{user?.email}</Text>
           </View>
         </View>
+
+        {/* Accès à la liste À voir */}
+        <Pressable style={styles.linkCard} onPress={() => router.push("/watchlist")}>
+          <View style={styles.linkIcon}>
+            <Bookmark size={18} color={colors.accentPastel} />
+          </View>
+          <Text style={styles.linkLabel}>Ma liste « À voir »</Text>
+          <ChevronRight size={20} color={colors.dim} />
+        </Pressable>
 
         {loading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={colors.accent} />
@@ -410,6 +419,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   moreText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.accentPastel },
+  linkCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    padding: 14,
+    marginBottom: 14,
+  },
+  linkIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 8,
+    backgroundColor: colors.accentSoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  linkLabel: { flex: 1, fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
   modHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
