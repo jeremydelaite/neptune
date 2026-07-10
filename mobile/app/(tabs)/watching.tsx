@@ -206,7 +206,7 @@ export default function WatchingScreen() {
           )}
         </Pressable>
 
-        <View style={styles.info}>
+        <Pressable style={styles.info} onPress={() => router.push(`/media/tv/${item.id}`)}>
           <Text style={styles.title} numberOfLines={1}>
             {item.name}
           </Text>
@@ -219,7 +219,7 @@ export default function WatchingScreen() {
           <Text style={styles.count}>
             {item.watchedCount}/{item.total} épisodes
           </Text>
-        </View>
+        </Pressable>
 
         <Pressable
           style={styles.check}
