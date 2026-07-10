@@ -110,8 +110,23 @@ export default function MediaDetailScreen() {
           const set = new Set(eps.map((e) => epKey(e.seasonNumber, e.episodeNumber)));
           watchedRef.current = set;
           setWatched(set);
+          // exclut ce qui est déjà vu (films terminés · séries en cours / à jour / archivées)
+          const seen = new Set(
+            library
+              .filter((l) => {
+                const st = l.status as string;
+                return (
+                  (l.mediaType === "MOVIE" && st === "COMPLETED") ||
+                  (l.mediaType === "TV" &&
+                    (st === "WATCHING" || st === "COMPLETED" || st === "ARCHIVED"))
+                );
+              })
+              .map((l) => l.tmdbId)
+          );
           setSimilar(
-            (sim.results ?? []).filter((m) => m.id !== tmdbId && isLatinMedia(m) && !m.adult).slice(0, 15)
+            (sim.results ?? [])
+              .filter((m) => m.id !== tmdbId && !seen.has(m.id) && isLatinMedia(m) && !m.adult)
+              .slice(0, 15)
           );
         })
         .catch(() => active && setData(null))
