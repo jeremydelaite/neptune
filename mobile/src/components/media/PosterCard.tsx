@@ -27,7 +27,10 @@ export function PosterCard({ media, mediaType, width = 106, posterSize = "w342",
       style={{ width }}
       onPress={() => {
         const qs = extraParams
-          ? "?" + new URLSearchParams(extraParams).toString()
+          ? "?" +
+            Object.entries(extraParams)
+              .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+              .join("&")
           : "";
         router.push(`/media/${mediaType.toLowerCase()}/${media.id}${qs}`);
       }}
