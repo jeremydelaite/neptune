@@ -287,21 +287,20 @@ export default function WatchingScreen() {
               <Text style={styles.hint}>Glisse une série vers la gauche pour l'archiver.</Text>
             ) : null
           }
-          ListFooterComponent={
-            archivedCount > 0 ? (
-              <Pressable style={styles.archiveEntry} onPress={() => router.push("/archives")}>
-                <Package size={18} color="#FF9D4D" />
-                <Text style={styles.archiveEntryText}>Séries archivées ({archivedCount})</Text>
-                <ChevronRight size={18} color={colors.dim} />
-              </Pressable>
-            ) : null
-          }
           ListEmptyComponent={
             <Text style={styles.empty}>
               Aucune série en cours. Commence à cocher des épisodes d'une série pour la voir apparaître ici.
             </Text>
           }
         />
+      )}
+
+      {archivedCount > 0 && (
+        <Pressable style={styles.archiveBar} onPress={() => router.push("/archives")}>
+          <Package size={18} color="#FF9D4D" />
+          <Text style={styles.archiveEntryText}>Séries archivées ({archivedCount})</Text>
+          <ChevronRight size={18} color={colors.dim} />
+        </Pressable>
       )}
     </SafeAreaView>
   );
@@ -311,11 +310,14 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.bg },
   header: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10 },
   hint: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginBottom: 10 },
-  archiveEntry: {
+  archiveBar: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 90,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginTop: 6,
     padding: 14,
     borderRadius: radius.md,
     borderWidth: 1,
@@ -324,7 +326,7 @@ const styles = StyleSheet.create({
   },
   archiveEntryText: { flex: 1, fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
   screenTitle: { fontFamily: fonts.heading, fontSize: 24, color: colors.text },
-  list: { paddingHorizontal: 16, paddingBottom: 100, gap: 12 },
+  list: { paddingHorizontal: 16, paddingBottom: 160, gap: 12 },
   card: {
     flexDirection: "row",
     alignItems: "center",
