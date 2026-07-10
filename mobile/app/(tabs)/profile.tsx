@@ -295,7 +295,7 @@ export default function ProfileScreen() {
         )}
 
         {/* Modération (admin) */}
-        {user?.isAdmin && (
+        {!loading && stats && user?.isAdmin && (
           <View style={styles.card}>
             <View style={styles.modHeader}>
               <ShieldAlert size={16} color={colors.danger} />
