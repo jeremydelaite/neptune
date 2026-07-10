@@ -24,7 +24,15 @@ function RootNavigator() {
   }, [user, loading, segments]);
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.bg },
+        animation: "slide_from_right",
+        gestureEnabled: true,
+        fullScreenGestureEnabled: true, // iOS : swipe depuis n'importe où pour revenir
+      }}
+    />
   );
 }
 
