@@ -88,6 +88,7 @@ export default function WatchingScreen() {
   const [error, setError] = useState(false);
   const [checking, setChecking] = useState<number | null>(null);
   const [archivedCount, setArchivedCount] = useState(0);
+  const [swiping, setSwiping] = useState(false);
 
   // Récupère toutes les séries de la bibliothèque et ne garde que celles
   // commencées mais pas terminées (peu importe le statut stocké).
@@ -212,6 +213,7 @@ export default function WatchingScreen() {
     return (
       <SwipeArchive
         onAction={() => archive(item.id)}
+        onSwipeStateChange={setSwiping}
         bgColor="rgba(255,138,61,0.18)"
         tintColor="#FF9D4D"
         label="Archiver"
@@ -277,6 +279,7 @@ export default function WatchingScreen() {
           data={shows}
           keyExtractor={(s) => String(s.id)}
           contentContainerStyle={styles.list}
+          scrollEnabled={!swiping}
           alwaysBounceVertical
           renderItem={renderItem}
           refreshControl={

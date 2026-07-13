@@ -52,6 +52,7 @@ export default function ArchivesScreen() {
   const router = useRouter();
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
+  const [swiping, setSwiping] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -135,6 +136,7 @@ export default function ArchivesScreen() {
     return (
       <SwipeArchive
         onAction={() => unarchive(item.id)}
+        onSwipeStateChange={setSwiping}
         bgColor="rgba(52,211,153,0.18)"
         tintColor="#34D399"
         label="Désarchiver"
@@ -185,6 +187,7 @@ export default function ArchivesScreen() {
           data={shows}
           keyExtractor={(s) => String(s.id)}
           contentContainerStyle={styles.list}
+          scrollEnabled={!swiping}
           alwaysBounceVertical
           renderItem={renderItem}
           ListHeaderComponent={
