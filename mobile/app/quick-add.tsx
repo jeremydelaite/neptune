@@ -26,21 +26,26 @@ export default function QuickAddScreen() {
   const [items, setItems] = useState<TmdbMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [added, setAdded] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [seriesTarget, setSeriesTarget] = useState<TmdbMedia | null>(null);
 
   const load = useCallback(async (t: Tab) => {
     setLoading(true);
     setSelected(new Set());
+    // ce qui est déjà dans la bibliothèque (pour ne pas le reproposer)
+    const lib = await api
+      .get<{ tmdbId: number; mediaType: Tab }[]>("/library")
+      .catch(() => [] as { tmdbId: number; mediaType: Tab }[]);
+    const owned = new Set(lib.filter((l) => l.mediaType === t).map((l) => l.tmdbId));
+
     const path = t === "MOVIE" ? "movie" : "tv";
     const out: TmdbMedia[] = [];
     const ids = new Set<number>();
-    for (let page = 1; page <= 5; page++) {
+    for (let page = 1; page <= 6 && out.length < 100; page++) {
       try {
         const data = await api.get<{ results: TmdbMedia[] }>(`/tmdb/top/${path}?page=${page}`);
         for (const m of data.results ?? []) {
-          if (ids.has(m.id) || !isLatinMedia(m) || m.adult) continue;
+          if (ids.has(m.id) || owned.has(m.id) || !isLatinMedia(m) || m.adult) continue;
           ids.add(m.id);
           out.push(m);
         }
@@ -71,7 +76,7 @@ export default function QuickAddScreen() {
     for (const id of ids) {
       await api.post("/library", { tmdbId: id, mediaType: "MOVIE", status: "COMPLETED" }).catch(() => {});
     }
-    setAdded((prev) => new Set([...prev, ...ids]));
+    setItems((prev) => prev.filter((m) => !selected.has(m.id)));
     setSelected(new Set());
     setSaving(false);
   }
@@ -118,21 +123,19 @@ export default function QuickAddScreen() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => {
             const isSel = selected.has(item.id);
-            const isAdded = added.has(item.id);
             const uri = tmdbImage(item.poster_path, "w185");
             return (
               <Pressable
                 style={{ width: cardWidth }}
                 onPress={() => {
-                  if (isAdded) return;
                   if (tab === "MOVIE") toggleSelect(item.id);
                   else setSeriesTarget(item);
                 }}
               >
                 <View style={[styles.poster, { width: cardWidth, height: cardWidth * 1.5 }]}>
                   {uri ? <Image source={{ uri }} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
-                  {(isSel || isAdded) && (
-                    <View style={[styles.overlay, isAdded && styles.overlayAdded]}>
+                  {isSel && (
+                    <View style={styles.overlay}>
                       <View style={styles.check}>
                         <Check size={20} color="#fff" />
                       </View>
@@ -164,7 +167,7 @@ export default function QuickAddScreen() {
         title={seriesTarget?.name ?? seriesTarget?.title ?? ""}
         onClose={() => setSeriesTarget(null)}
         onDone={() => {
-          if (seriesTarget) setAdded((prev) => new Set([...prev, seriesTarget.id]));
+          if (seriesTarget) setItems((prev) => prev.filter((m) => m.id !== seriesTarget.id));
           setSeriesTarget(null);
         }}
       />
@@ -193,7 +196,6 @@ const styles = StyleSheet.create({
   row: { gap: GAP, marginBottom: GAP },
   poster: { borderRadius: radius.md, overflow: "hidden", backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(46,155,255,0.45)", alignItems: "center", justifyContent: "center" },
-  overlayAdded: { backgroundColor: "rgba(52,211,153,0.5)" },
   check: { width: 34, height: 34, borderRadius: 999, backgroundColor: "rgba(15,17,21,0.55)", alignItems: "center", justifyContent: "center" },
   name: { fontFamily: fonts.body, fontSize: 11, color: colors.dim, marginTop: 5 },
 
