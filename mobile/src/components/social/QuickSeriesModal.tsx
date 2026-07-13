@@ -10,7 +10,7 @@ import { fonts, radius } from "../../theme/typography";
 
 interface Season { season_number: number; episode_count: number; name: string }
 interface Ep { episode_number: number; runtime: number | null }
-type Sel = { type: "all" } | { type: "ep"; season: number; ep: number } | null;
+type Sel = { type: "all" } | { type: "season"; season: number } | { type: "ep"; season: number; ep: number } | null;
 
 export function QuickSeriesModal({
   visible, tvId, title, onClose, onDone,
@@ -103,12 +103,15 @@ export function QuickSeriesModal({
     if (!sel) return;
     const lastSeason = seasons.length ? Math.max(...seasons.map((s) => s.season_number)) : 0;
     if (sel.type === "all") markUpTo(lastSeason, null);
+    else if (sel.type === "season") markUpTo(sel.season, null);
     else markUpTo(sel.season, sel.ep);
   }
 
   const confirmMsg =
     sel?.type === "all"
       ? "Marquer toute la série comme vue ?"
+      : sel?.type === "season"
+      ? `Marquer comme vue toute la saison ${sel.season} ? Les saisons précédentes seront aussi cochées.`
       : sel?.type === "ep"
       ? `Marquer comme vu jusqu'à la saison ${sel.season}, épisode ${sel.ep} ? Les saisons précédentes seront cochées.`
       : "";
@@ -147,11 +150,28 @@ export function QuickSeriesModal({
                   const isOpen = open === s.season_number;
                   return (
                     <View key={s.season_number}>
-                      <Pressable style={styles.seasonRow} onPress={() => toggleSeason(s.season_number)}>
-                        {isOpen ? <ChevronDown size={16} color={colors.dim} /> : <ChevronRight size={16} color={colors.dim} />}
-                        <Text style={styles.seasonName}>{s.name || `Saison ${s.season_number}`}</Text>
-                        <Text style={styles.seasonCount}>{s.episode_count} ép.</Text>
-                      </Pressable>
+                      <View style={styles.seasonRow}>
+                        <Pressable style={styles.seasonMain} onPress={() => toggleSeason(s.season_number)}>
+                          {isOpen ? <ChevronDown size={16} color={colors.dim} /> : <ChevronRight size={16} color={colors.dim} />}
+                          <Text style={styles.seasonName}>{s.name || `Saison ${s.season_number}`}</Text>
+                          <Text style={styles.seasonCount}>{s.episode_count} ép.</Text>
+                        </Pressable>
+                        <Pressable
+                          style={styles.seasonCheckWrap}
+                          hitSlop={6}
+                          onPress={() => setSel({ type: "season", season: s.season_number })}
+                        >
+                          <View
+                            style={[
+                              styles.epCheck,
+                              sel?.type === "season" && sel.season === s.season_number && styles.epCheckOn,
+                            ]}
+                          >
+                            {sel?.type === "season" && sel.season === s.season_number && <Check size={12} color="#fff" />}
+                          </View>
+                          <Text style={styles.seasonCheckLabel}>Vue</Text>
+                        </Pressable>
+                      </View>
                       {isOpen && (
                         <View style={styles.epList}>
                           {!eps[s.season_number] ? (
@@ -233,6 +253,9 @@ const styles = StyleSheet.create({
     flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 12,
     borderTopWidth: 1, borderTopColor: colors.line,
   },
+  seasonMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
+  seasonCheckWrap: { flexDirection: "row", alignItems: "center", gap: 5 },
+  seasonCheckLabel: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.dim },
   seasonName: { flex: 1, fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
   seasonCount: { fontFamily: fonts.body, fontSize: 12, color: colors.dim },
   epList: { paddingLeft: 26, paddingBottom: 6 },
