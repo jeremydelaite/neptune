@@ -13,9 +13,10 @@ interface Props {
   tintColor: string;
   label: string;
   icon: ReactNode;
+  onSwipeStateChange?: (active: boolean) => void;
 }
 
-export function SwipeArchive({ children, onAction, bgColor, tintColor, label, icon }: Props) {
+export function SwipeArchive({ children, onAction, bgColor, tintColor, label, icon, onSwipeStateChange }: Props) {
   const tx = useRef(new Animated.Value(0)).current;
 
   const pan = useRef(
@@ -24,6 +25,7 @@ export function SwipeArchive({ children, onAction, bgColor, tintColor, label, ic
       onMoveShouldSetPanResponder: (_, g) =>
         g.dx < -6 && Math.abs(g.dx) > Math.abs(g.dy) * 1.2,
       onPanResponderTerminationRequest: () => false, // ne cède pas le geste au scroll
+      onPanResponderGrant: () => onSwipeStateChange?.(true), // coupe le scroll de la liste
       onPanResponderMove: (_, g) => {
         if (g.dx <= 0) {
           // suivi 1:1, avec résistance au-delà du seuil de déclenchement
@@ -32,6 +34,7 @@ export function SwipeArchive({ children, onAction, bgColor, tintColor, label, ic
         }
       },
       onPanResponderRelease: (_, g) => {
+        onSwipeStateChange?.(false); // réactive le scroll
         if (g.dx < -TRIGGER || g.vx < -0.6) {
           Animated.timing(tx, {
             toValue: -W,
@@ -47,6 +50,7 @@ export function SwipeArchive({ children, onAction, bgColor, tintColor, label, ic
           }).start();
         }
       },
+      onPanResponderTerminate: () => onSwipeStateChange?.(false),
     })
   ).current;
 
