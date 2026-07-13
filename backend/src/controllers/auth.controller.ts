@@ -42,30 +42,36 @@ function newVerifyToken() {
 const PUBLIC_URL = process.env.PUBLIC_URL ?? "http://localhost:3000";
 
 export async function register(req: Request, res: Response) {
-  const parsed = registerSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+  try {
+    const parsed = registerSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
 
-  const { email, username, password } = parsed.data;
-  const exists = await prisma.user.findFirst({ where: { OR: [{ email }, { username }] } });
-  if (exists) return res.status(409).json({ error: "Email ou pseudo déjà utilisé" });
+    const { email, username, password } = parsed.data;
+    const exists = await prisma.user.findFirst({ where: { OR: [{ email }, { username }] } });
+    if (exists) return res.status(409).json({ error: "Email ou pseudo déjà utilisé" });
 
-  const { token, exp } = newVerifyToken();
-  const user = await prisma.user.create({
-    data: {
+    const { token, exp } = newVerifyToken();
+    const user = await prisma.user.create({
+      data: {
+        email,
+        username,
+        passwordHash: await bcrypt.hash(password, 10),
+        emailVerified: false,
+        verifyToken: token,
+        verifyTokenExp: exp,
+      },
+    });
+    // l'envoi d'email ne doit jamais bloquer la création du compte
+    sendVerificationEmail(email, `${PUBLIC_URL}/auth/verify?token=${token}`, username).catch(() => {});
+    res.status(201).json({
+      pendingVerification: true,
       email,
-      username,
-      passwordHash: await bcrypt.hash(password, 10),
-      emailVerified: false,
-      verifyToken: token,
-      verifyTokenExp: exp,
-    },
-  });
-  await sendVerificationEmail(email, `${PUBLIC_URL}/auth/verify?token=${token}`, username);
-  res.status(201).json({
-    pendingVerification: true,
-    email,
-    message: "Compte créé. Vérifie ton email pour l'activer.",
-  });
+      message: "Compte créé. Vérifie ton email pour l'activer.",
+    });
+  } catch (e) {
+    console.error("register error:", e);
+    res.status(500).json({ error: "Inscription impossible pour le moment. (migration email en attente ?)" });
+  }
 }
 
 export async function login(req: Request, res: Response) {
