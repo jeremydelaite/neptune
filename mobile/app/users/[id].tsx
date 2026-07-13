@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator, Modal, Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check, AlertTriangle, Clock3, Ban, RotateCcw } from "lucide-react-native";
+import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check, AlertTriangle, Clock3, Ban, RotateCcw, ImageOff } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
@@ -19,6 +19,7 @@ interface PublicProfile {
   createdAt: string;
   isSelf: boolean;
   isBlocked: boolean;
+  photoReportedByMe: boolean;
   suspendedUntil: string | null;
   bannedAt: string | null;
   stats: {
@@ -65,6 +66,7 @@ export default function PublicProfileScreen() {
   const [busy, setBusy] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportDone, setReportDone] = useState(false);
+  const [photoReported, setPhotoReported] = useState(false);
   const [adminModal, setAdminModal] = useState<null | "warn" | "suspend" | "ban">(null);
   const [warnText, setWarnText] = useState("");
   const [busyAdmin, setBusyAdmin] = useState(false);
@@ -84,6 +86,7 @@ export default function PublicProfileScreen() {
           if (!active) return;
           setProfile(p);
           setBlocked(p.isBlocked);
+          setPhotoReported(p.photoReportedByMe);
         })
         .catch(() => active && setProfile(null))
         .finally(() => active && setLoading(false));
@@ -98,6 +101,7 @@ export default function PublicProfileScreen() {
       const p = await api.get<PublicProfile>(`/users/${id}/public`);
       setProfile(p);
       setBlocked(p.isBlocked);
+      setPhotoReported(p.photoReportedByMe);
     } catch {
       /* ignore */
     }
@@ -140,6 +144,22 @@ export default function PublicProfileScreen() {
     { key: "INAPPROPRIATE", label: "Contenu inapproprié" },
     { key: "OTHER", label: "Autre" },
   ];
+
+  async function reportPhoto() {
+    if (!profile || photoReported) return;
+    setPhotoReported(true); // optimiste
+    try {
+      await api.post(`/users/${profile.id}/report-photo`, {});
+    } catch {
+      setPhotoReported(false);
+    }
+  }
+
+  async function adminDeletePhoto() {
+    if (!profile) return;
+    await api.delete(`/users/${profile.id}/avatar`).catch(() => {});
+    await refetch();
+  }
 
   async function submitReport(reason: string) {
     if (!profile) return;
@@ -212,6 +232,19 @@ export default function PublicProfileScreen() {
             </Text>
           )}
 
+          {profile.avatarUrl && !profile.isSelf && !profile.isAdmin && (
+            <Pressable
+              style={styles.photoReportBtn}
+              onPress={reportPhoto}
+              disabled={photoReported}
+            >
+              {photoReported ? <Check size={14} color={colors.accentPastel} /> : <Flag size={14} color={colors.danger} />}
+              <Text style={[styles.photoReportText, photoReported && { color: colors.accentPastel }]}>
+                {photoReported ? "Photo signalée" : "Signaler la photo de profil"}
+              </Text>
+            </Pressable>
+          )}
+
           {/* Statut de modération */}
           {profile.bannedAt && (
             <View style={[styles.statusBanner, styles.statusBan]}>
@@ -247,6 +280,12 @@ export default function PublicProfileScreen() {
                   <Text style={styles.adminBtnText}>Bannir</Text>
                 </Pressable>
               </View>
+              {profile.avatarUrl && (
+                <Pressable style={styles.liftBtn} onPress={adminDeletePhoto} disabled={busyAdmin}>
+                  <ImageOff size={16} color="#F87171" />
+                  <Text style={styles.adminBtnText}>Supprimer la photo de profil</Text>
+                </Pressable>
+              )}
               {(profile.bannedAt || (profile.suspendedUntil && new Date(profile.suspendedUntil) > new Date())) && (
                 <Pressable style={styles.liftBtn} onPress={() => adminAction("lift")} disabled={busyAdmin}>
                   <RotateCcw size={16} color={colors.accentPastel} />
@@ -524,6 +563,8 @@ const styles = StyleSheet.create({
   actionText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim },
   actionTextActive: { color: colors.accentPastel },
   blockedNote: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginBottom: 14, marginTop: -4 },
+  photoReportBtn: { flexDirection: "row", alignItems: "center", gap: 6, alignSelf: "flex-start", paddingVertical: 6, marginBottom: 12, marginTop: -4 },
+  photoReportText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.danger },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 28 },
   sheet: { width: "100%", maxWidth: 380, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, padding: 18 },

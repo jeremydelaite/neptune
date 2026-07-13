@@ -34,6 +34,11 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
         where: { userId_blockedUserId: { userId: req.userId, blockedUserId: id } },
       })
     : null;
+  const photoReported = req.userId
+    ? await prisma.avatarReport.findUnique({
+        where: { reportedUserId_reporterId: { reportedUserId: id, reporterId: req.userId } },
+      })
+    : null;
 
   const [moviesSeen, episodesSeen, epTime, ratings, commentsCount] = await Promise.all([
     prisma.trackedItem.count({ where: { userId: id, mediaType: "MOVIE", status: "COMPLETED" } }),
@@ -84,6 +89,7 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
     createdAt: user.createdAt,
     isSelf: user.id === req.userId,
     isBlocked: !!blocked,
+    photoReportedByMe: !!photoReported,
     suspendedUntil: user.suspendedUntil ? user.suspendedUntil.toISOString() : null,
     bannedAt: user.bannedAt ? user.bannedAt.toISOString() : null,
     stats: {
@@ -278,4 +284,49 @@ export async function getSanctionedUsers(req: AuthRequest, res: Response) {
       suspendedUntil: u.suspendedUntil ? u.suspendedUntil.toISOString() : null,
     }))
   );
+}
+
+
+// POST /users/:id/report-photo — signaler la photo de profil d'un utilisateur
+export async function reportPhoto(req: AuthRequest, res: Response) {
+  const id = req.params.id;
+  if (id === req.userId) return res.status(400).json({ error: "Action impossible sur ta propre photo" });
+
+  const target = await prisma.user.findUnique({ where: { id }, select: { avatarUrl: true } });
+  if (!target) return res.status(404).json({ error: "Profil introuvable" });
+  if (!target.avatarUrl) return res.status(400).json({ error: "Ce compte n'a pas de photo" });
+
+  await prisma.avatarReport.upsert({
+    where: { reportedUserId_reporterId: { reportedUserId: id, reporterId: req.userId! } },
+    update: {},
+    create: { reportedUserId: id, reporterId: req.userId! },
+  });
+  res.json({ ok: true });
+}
+
+// GET /users/reported-photos — admin : photos signalées (regroupées)
+export async function getReportedPhotos(req: AuthRequest, res: Response) {
+  if (!(await isAdmin(req.userId!))) return res.status(403).json({ error: "Accès refusé" });
+
+  const reports = await prisma.avatarReport.findMany({
+    select: { reportedUser: { select: { id: true, username: true, avatarUrl: true } } },
+  });
+
+  const map = new Map<string, { id: string; username: string; avatarUrl: string | null; count: number }>();
+  for (const r of reports) {
+    const u = r.reportedUser;
+    if (!u.avatarUrl) continue; // photo déjà supprimée
+    const cur = map.get(u.id) ?? { id: u.id, username: u.username, avatarUrl: u.avatarUrl, count: 0 };
+    cur.count += 1;
+    map.set(u.id, cur);
+  }
+  res.json([...map.values()].sort((a, b) => b.count - a.count));
+}
+
+// DELETE /users/:id/avatar — admin : supprime la photo d'un utilisateur (+ purge les signalements)
+export async function adminDeleteAvatar(req: AuthRequest, res: Response) {
+  if (!(await isAdmin(req.userId!))) return res.status(403).json({ error: "Accès refusé" });
+  await prisma.user.update({ where: { id: req.params.id }, data: { avatarUrl: null } });
+  await prisma.avatarReport.deleteMany({ where: { reportedUserId: req.params.id } });
+  res.json({ ok: true });
 }

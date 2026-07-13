@@ -54,6 +54,9 @@ model User {
   blocking            BlockedUser[] @relation("Blocker")
   blockedBy           BlockedUser[] @relation("Blocked")
 
+  avatarReportsMade     AvatarReport[] @relation("AvatarReporter")
+  avatarReportsReceived AvatarReport[] @relation("AvatarReported")
+
   @@map("users")
 }
 
@@ -177,4 +180,19 @@ model BlockedUser {
   @@unique([userId, blockedUserId])
   @@index([userId])
   @@map("blocked_users")
+}
+
+
+// Signalement d'une PHOTO de profil
+model AvatarReport {
+  id             String   @id @default(uuid())
+  reportedUserId String   @map("reported_user_id")
+  reporterId     String   @map("reporter_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  reportedUser User @relation("AvatarReported", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reporter     User @relation("AvatarReporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([reportedUserId, reporterId])
+  @@map("avatar_reports")
 }

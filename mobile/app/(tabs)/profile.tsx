@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X } from "lucide-react-native";
+import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
@@ -46,6 +46,13 @@ interface ReportedUser {
   avatarUrl: string | null;
   count: number;
   reasons: Record<string, number>;
+}
+
+interface ReportedPhoto {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  count: number;
 }
 
 interface SanctionedUser {
@@ -90,6 +97,7 @@ export default function ProfileScreen() {
   const [reported, setReported] = useState<ReportedComment[]>([]);
   const [reportedUsers, setReportedUsers] = useState<ReportedUser[]>([]);
   const [sanctioned, setSanctioned] = useState<SanctionedUser[]>([]);
+  const [reportedPhotos, setReportedPhotos] = useState<ReportedPhoto[]>([]);
   const [sanctionQuery, setSanctionQuery] = useState("");
   const [sanctionFocused, setSanctionFocused] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -164,6 +172,10 @@ export default function ProfileScreen() {
         .get<SanctionedUser[]>("/users/sanctioned")
         .then((r) => active && setSanctioned(r))
         .catch(() => {});
+      api
+        .get<ReportedPhoto[]>("/users/reported-photos")
+        .then((r) => active && setReportedPhotos(r))
+        .catch(() => {});
       return () => {
         active = false;
       };
@@ -178,6 +190,11 @@ export default function ProfileScreen() {
   async function liftSanction(id: string) {
     setSanctioned((prev) => prev.filter((u) => u.id !== id));
     await api.post(`/users/${id}/lift`, {}).catch(() => {});
+  }
+
+  async function deletePhoto(id: string) {
+    setReportedPhotos((prev) => prev.filter((u) => u.id !== id));
+    await api.delete(`/users/${id}/avatar`).catch(() => {});
   }
 
   const fmtDate = (iso: string) =>
@@ -222,6 +239,8 @@ export default function ProfileScreen() {
         setReportedUsers(ru);
         const sn = await api.get<SanctionedUser[]>("/users/sanctioned").catch(() => []);
         setSanctioned(sn);
+        const rp = await api.get<ReportedPhoto[]>("/users/reported-photos").catch(() => []);
+        setReportedPhotos(rp);
       }
     } catch {
       /* ignore */
@@ -469,6 +488,37 @@ export default function ProfileScreen() {
 
             <View style={styles.modSubHeader}>
               <ShieldAlert size={16} color={colors.danger} />
+              <Text style={styles.cardTitle}>Photos signalées</Text>
+            </View>
+            {reportedPhotos.length === 0 ? (
+              <Text style={styles.muted}>Aucune photo signalée.</Text>
+            ) : (
+              reportedPhotos.map((u, i) => (
+                <View key={u.id} style={[styles.actRow, i > 0 && styles.actRowBorder]}>
+                  <Pressable onPress={() => router.push(`/users/${u.id}`)}>
+                    {u.avatarUrl ? (
+                      <Image source={{ uri: u.avatarUrl }} style={styles.photoThumb} />
+                    ) : (
+                      <View style={styles.photoThumbFallback}>
+                        <Text style={styles.photoThumbLetter}>{u.username.charAt(0).toUpperCase()}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                  <Pressable style={{ flex: 1 }} onPress={() => router.push(`/users/${u.id}`)}>
+                    <Text style={styles.actTitle} numberOfLines={1}>{u.username}</Text>
+                    <Text style={styles.actComment} numberOfLines={1}>
+                      {u.count} signalement{u.count > 1 ? "s" : ""}
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={() => deletePhoto(u.id)} hitSlop={8} style={{ padding: 4 }}>
+                    <ImageOff size={16} color={colors.danger} />
+                  </Pressable>
+                </View>
+              ))
+            )}
+
+            <View style={styles.modSubHeader}>
+              <ShieldAlert size={16} color={colors.danger} />
               <Text style={styles.cardTitle}>Comptes sanctionnés</Text>
             </View>
             {sanctioned.length === 0 ? (
@@ -641,6 +691,12 @@ const styles = StyleSheet.create({
   modSubHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, marginBottom: 12, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 16 },
   reactivateBtn: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: radius.sm, backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: colors.accent },
   reactivateText: { fontFamily: fonts.headingSemi, fontSize: 11, color: colors.accentPastel },
+  photoThumb: { width: 40, height: 40, borderRadius: 999, borderWidth: 1, borderColor: colors.line },
+  photoThumbFallback: {
+    width: 40, height: 40, borderRadius: 999, backgroundColor: colors.accentSoft,
+    alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.accent,
+  },
+  photoThumbLetter: { fontFamily: fonts.heading, fontSize: 16, color: colors.accentPastel },
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
