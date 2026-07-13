@@ -67,7 +67,7 @@ export function FriendSearchModal({ visible, onClose }: { visible: boolean; onCl
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
         <View style={styles.sheet}>
           <View style={styles.grabber} />
