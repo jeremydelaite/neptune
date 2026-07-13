@@ -30,12 +30,24 @@ export async function getReported(req: AuthRequest, res: Response) {
 }
 
 // GET /comments/:mediaType/:tmdbId?sort=recent|old — public, triable par date
-export async function getComments(req: Request, res: Response) {
+export async function getComments(req: AuthRequest, res: Response) {
   const sort = req.query.sort === "old" ? "asc" : "desc";
+
+  // Utilisateur connecté : on masque les commentaires des comptes qu'il a masqués
+  let blockedIds: string[] = [];
+  if (req.userId) {
+    const blocked = await prisma.blockedUser.findMany({
+      where: { userId: req.userId },
+      select: { blockedUserId: true },
+    });
+    blockedIds = blocked.map((b) => b.blockedUserId);
+  }
+
   const comments = await prisma.comment.findMany({
     where: {
       tmdbId: Number(req.params.tmdbId),
       mediaType: req.params.mediaType.toUpperCase() as never,
+      ...(blockedIds.length ? { userId: { notIn: blockedIds } } : {}),
     },
     orderBy: { createdAt: sort },
     include: withUser,

@@ -36,6 +36,7 @@ function formatJoined(iso: string | null): string {
 }
 
 type Feedback = { type: "ok" | "err"; text: string } | null;
+interface BlockedUser { id: string; username: string; avatarUrl: string | null }
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -56,6 +57,7 @@ export default function SettingsScreen() {
   const [profileMsg, setProfileMsg] = useState<Feedback>(null);
   const [passwordMsg, setPasswordMsg] = useState<Feedback>(null);
   const [confirmKind, setConfirmKind] = useState<null | "profile" | "password">(null);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -76,11 +78,20 @@ export default function SettingsScreen() {
           }
         })
         .catch(() => {});
+      api
+        .get<BlockedUser[]>("/users/blocked")
+        .then((list) => active && setBlockedUsers(list))
+        .catch(() => {});
       return () => {
         active = false;
       };
     }, [editingProfile])
   );
+
+  async function unblock(id: string) {
+    setBlockedUsers((prev) => prev.filter((u) => u.id !== id));
+    await api.delete(`/users/${id}/block`).catch(() => {});
+  }
 
   function cancelProfile() {
     setUsername(user?.username ?? "");
@@ -292,6 +303,24 @@ export default function SettingsScreen() {
             )}
           </View>
 
+          {/* Comptes masqués */}
+          {blockedUsers.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Comptes masqués</Text>
+              {blockedUsers.map((b, i) => (
+                <View key={b.id} style={[styles.blockedRow, i > 0 && styles.blockedRowBorder]}>
+                  <View style={styles.blockedAvatar}>
+                    <Text style={styles.blockedAvatarText}>{b.username.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <Text style={styles.blockedName} numberOfLines={1}>{b.username}</Text>
+                  <Pressable style={styles.unblockBtn} onPress={() => unblock(b.id)}>
+                    <Text style={styles.unblockText}>Ne plus masquer</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          )}
+
           {/* Informations du compte */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Informations du compte</Text>
@@ -406,4 +435,19 @@ const styles = StyleSheet.create({
   infoRowBorder: { borderTopWidth: 1, borderTopColor: colors.line },
   infoLabel: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   infoValue: { fontFamily: fonts.bodyMedium, fontSize: 13, color: colors.text, flexShrink: 1, textAlign: "right", marginLeft: 12 },
+
+  blockedRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
+  blockedRowBorder: { borderTopWidth: 1, borderTopColor: colors.line },
+  blockedAvatar: {
+    width: 34, height: 34, borderRadius: 999,
+    backgroundColor: colors.accentSoft, alignItems: "center", justifyContent: "center",
+    borderWidth: 1, borderColor: colors.accent,
+  },
+  blockedAvatarText: { fontFamily: fonts.heading, fontSize: 14, color: colors.accentPastel },
+  blockedName: { flex: 1, fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
+  unblockBtn: {
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.sm,
+    backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.line,
+  },
+  unblockText: { fontFamily: fonts.headingSemi, fontSize: 12, color: colors.accentPastel },
 });

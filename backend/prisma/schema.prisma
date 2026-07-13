@@ -46,6 +46,11 @@ model User {
   comments        Comment[]
   reports         Report[]
 
+  userReportsMade     UserReport[]  @relation("Reporter")
+  userReportsReceived UserReport[]  @relation("ReportedUser")
+  blocking            BlockedUser[] @relation("Blocker")
+  blockedBy           BlockedUser[] @relation("Blocked")
+
   @@map("users")
 }
 
@@ -137,4 +142,36 @@ model Report {
   // Un utilisateur ne signale un commentaire qu'une fois
   @@unique([commentId, userId])
   @@map("reports")
+}
+
+
+// Signalement d'un COMPTE utilisateur
+model UserReport {
+  id             String   @id @default(uuid())
+  reportedUserId String   @map("reported_user_id")
+  reporterId     String   @map("reporter_id")
+  reason         String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  reportedUser User @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reporter     User @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  // Un utilisateur ne signale un compte qu'une fois
+  @@unique([reportedUserId, reporterId])
+  @@map("user_reports")
+}
+
+// Utilisateur masqué (ses commentaires/activités deviennent invisibles pour le masquant)
+model BlockedUser {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id") // celui qui masque
+  blockedUserId String   @map("blocked_user_id") // celui qui est masqué
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user        User @relation("Blocker", fields: [userId], references: [id], onDelete: Cascade)
+  blockedUser User @relation("Blocked", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, blockedUserId])
+  @@index([userId])
+  @@map("blocked_users")
 }

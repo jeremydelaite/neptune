@@ -19,3 +19,17 @@ export function requireAuth(req: AuthRequest, res: Response, next: NextFunction)
     return res.status(401).json({ error: "Token invalide ou expiré" });
   }
 }
+
+// Auth optionnelle : renseigne req.userId si un token valide est présent, sinon continue
+export function optionalAuth(req: AuthRequest, _res: Response, next: NextFunction) {
+  const header = req.headers.authorization;
+  if (header?.startsWith("Bearer ")) {
+    try {
+      const payload = jwt.verify(header.slice(7), process.env.JWT_SECRET!) as { userId: string };
+      req.userId = payload.userId;
+    } catch {
+      /* token invalide → visiteur anonyme */
+    }
+  }
+  next();
+}

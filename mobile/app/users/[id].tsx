@@ -1,9 +1,9 @@
 // PROFIL PUBLIC : stats + activité publique d'un utilisateur (clic sur un pseudo)
 import { useCallback, useState } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, ActivityIndicator, Modal, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck } from "lucide-react-native";
+import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
@@ -15,6 +15,7 @@ interface PublicProfile {
   isAdmin: boolean;
   createdAt: string;
   isSelf: boolean;
+  isBlocked: boolean;
   stats: {
     moviesSeen: number;
     episodesSeen: number;
@@ -54,6 +55,10 @@ export default function PublicProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [blocked, setBlocked] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportDone, setReportDone] = useState(false);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -66,7 +71,11 @@ export default function PublicProfileScreen() {
       setLoading(true);
       api
         .get<PublicProfile>(`/users/${id}/public`)
-        .then((p) => active && setProfile(p))
+        .then((p) => {
+          if (!active) return;
+          setProfile(p);
+          setBlocked(p.isBlocked);
+        })
         .catch(() => active && setProfile(null))
         .finally(() => active && setLoading(false));
       return () => {
@@ -74,6 +83,40 @@ export default function PublicProfileScreen() {
       };
     }, [id])
   );
+
+  async function toggleBlock() {
+    if (!profile || busy) return;
+    setBusy(true);
+    const next = !blocked;
+    setBlocked(next); // optimiste
+    try {
+      if (next) await api.post(`/users/${profile.id}/block`, {});
+      else await api.delete(`/users/${profile.id}/block`);
+    } catch {
+      setBlocked(!next); // rollback
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const REPORT_REASONS: { key: string; label: string }[] = [
+    { key: "SPAM", label: "Spam" },
+    { key: "HARASSMENT", label: "Harcèlement" },
+    { key: "FAKE", label: "Faux compte" },
+    { key: "INAPPROPRIATE", label: "Contenu inapproprié" },
+    { key: "OTHER", label: "Autre" },
+  ];
+
+  async function submitReport(reason: string) {
+    if (!profile) return;
+    setReportOpen(false);
+    try {
+      await api.post(`/users/${profile.id}/report`, { reason });
+      setReportDone(true);
+    } catch {
+      /* ignore */
+    }
+  }
 
   const maxRating = Math.max(1, ...(profile?.stats.ratingsBreakdown.map((r) => r.count) ?? [1]));
 
@@ -105,6 +148,33 @@ export default function PublicProfileScreen() {
               <Text style={styles.joined}>Membre depuis {formatJoined(profile.createdAt)}</Text>
             </View>
           </View>
+
+          {!profile.isSelf && (
+            <View style={styles.actionsRow}>
+              <Pressable style={[styles.actionBtn, blocked && styles.actionBtnActive]} onPress={toggleBlock} disabled={busy}>
+                {blocked ? <Eye size={16} color={colors.accentPastel} /> : <EyeOff size={16} color={colors.dim} />}
+                <Text style={[styles.actionText, blocked && styles.actionTextActive]}>
+                  {blocked ? "Ne plus masquer" : "Masquer"}
+                </Text>
+              </Pressable>
+              <Pressable
+                style={styles.actionBtn}
+                onPress={() => (reportDone ? undefined : setReportOpen(true))}
+                disabled={reportDone}
+              >
+                {reportDone ? <Check size={16} color={colors.accentPastel} /> : <Flag size={16} color={colors.danger} />}
+                <Text style={[styles.actionText, reportDone && styles.actionTextActive]}>
+                  {reportDone ? "Signalé" : "Signaler"}
+                </Text>
+              </Pressable>
+            </View>
+          )}
+
+          {blocked && (
+            <Text style={styles.blockedNote}>
+              Tu masques ce compte : ses commentaires n'apparaissent plus sur les fiches.
+            </Text>
+          )}
 
           {/* Chiffres clés */}
           <View style={styles.statsRow}>
@@ -185,6 +255,23 @@ export default function PublicProfileScreen() {
           </View>
         </ScrollView>
       )}
+
+      <Modal visible={reportOpen} transparent animationType="fade" onRequestClose={() => setReportOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setReportOpen(false)}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <Text style={styles.sheetTitle}>Signaler ce compte</Text>
+            <Text style={styles.sheetSub}>Pour quelle raison ?</Text>
+            {REPORT_REASONS.map((r) => (
+              <Pressable key={r.key} style={styles.reasonRow} onPress={() => submitReport(r.key)}>
+                <Text style={styles.reasonText}>{r.label}</Text>
+              </Pressable>
+            ))}
+            <Pressable style={styles.cancelRow} onPress={() => setReportOpen(false)}>
+              <Text style={styles.cancelText}>Annuler</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -262,4 +349,31 @@ const styles = StyleSheet.create({
   actStarsEmpty: { color: "#4B5262" },
   actComment: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginTop: 2 },
   actDate: { fontFamily: fonts.body, fontSize: 11, color: colors.dim },
+
+  actionsRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
+  actionBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  actionBtnActive: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+  actionText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim },
+  actionTextActive: { color: colors.accentPastel },
+  blockedNote: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginBottom: 14, marginTop: -4 },
+
+  backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 28 },
+  sheet: { width: "100%", maxWidth: 380, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, padding: 18 },
+  sheetTitle: { fontFamily: fonts.heading, fontSize: 17, color: colors.text, marginBottom: 4 },
+  sheetSub: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, marginBottom: 14 },
+  reasonRow: { paddingVertical: 13, borderTopWidth: 1, borderTopColor: colors.line },
+  reasonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.text },
+  cancelRow: { paddingTop: 14, alignItems: "center" },
+  cancelText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim },
 });

@@ -2,6 +2,7 @@ import { Response } from "express";
 import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth";
 import { tmdbFetch } from "../services/tmdb.service";
+import { z } from "zod";
 
 async function tmdbTitle(mediaType: "MOVIE" | "TV", tmdbId: number): Promise<string> {
   try {
@@ -22,6 +23,12 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
     select: { id: true, username: true, avatarUrl: true, isAdmin: true, createdAt: true },
   });
   if (!user) return res.status(404).json({ error: "Profil introuvable" });
+
+  const blocked = req.userId
+    ? await prisma.blockedUser.findUnique({
+        where: { userId_blockedUserId: { userId: req.userId, blockedUserId: id } },
+      })
+    : null;
 
   const [moviesSeen, episodesSeen, epTime, ratings, commentsCount] = await Promise.all([
     prisma.trackedItem.count({ where: { userId: id, mediaType: "MOVIE", status: "COMPLETED" } }),
@@ -71,6 +78,7 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
     isAdmin: user.isAdmin,
     createdAt: user.createdAt,
     isSelf: user.id === req.userId,
+    isBlocked: !!blocked,
     stats: {
       moviesSeen,
       episodesSeen,
@@ -83,4 +91,63 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
     },
     activity,
   });
+}
+
+
+const REASONS = ["SPAM", "HARASSMENT", "FAKE", "INAPPROPRIATE", "OTHER"] as const;
+
+// POST /users/:id/report — signaler un compte
+export async function reportUser(req: AuthRequest, res: Response) {
+  const id = req.params.id;
+  if (id === req.userId) return res.status(400).json({ error: "Tu ne peux pas te signaler toi-même" });
+
+  const schema = z.object({ reason: z.enum(REASONS) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Motif invalide" });
+
+  const target = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+  if (!target) return res.status(404).json({ error: "Profil introuvable" });
+
+  await prisma.userReport.upsert({
+    where: { reportedUserId_reporterId: { reportedUserId: id, reporterId: req.userId! } },
+    update: { reason: parsed.data.reason },
+    create: { reportedUserId: id, reporterId: req.userId!, reason: parsed.data.reason },
+  });
+  res.json({ ok: true });
+}
+
+// POST /users/:id/block — masquer un utilisateur
+export async function blockUser(req: AuthRequest, res: Response) {
+  const id = req.params.id;
+  if (id === req.userId) return res.status(400).json({ error: "Tu ne peux pas te masquer toi-même" });
+
+  const target = await prisma.user.findUnique({ where: { id }, select: { id: true } });
+  if (!target) return res.status(404).json({ error: "Profil introuvable" });
+
+  await prisma.blockedUser.upsert({
+    where: { userId_blockedUserId: { userId: req.userId!, blockedUserId: id } },
+    update: {},
+    create: { userId: req.userId!, blockedUserId: id },
+  });
+  res.json({ ok: true });
+}
+
+// DELETE /users/:id/block — ne plus masquer
+export async function unblockUser(req: AuthRequest, res: Response) {
+  await prisma.blockedUser.deleteMany({
+    where: { userId: req.userId!, blockedUserId: req.params.id },
+  });
+  res.json({ ok: true });
+}
+
+// GET /users/blocked — liste des comptes masqués
+export async function getBlocked(req: AuthRequest, res: Response) {
+  const rows = await prisma.blockedUser.findMany({
+    where: { userId: req.userId! },
+    orderBy: { createdAt: "desc" },
+    select: {
+      blockedUser: { select: { id: true, username: true, avatarUrl: true } },
+    },
+  });
+  res.json(rows.map((r) => r.blockedUser));
 }
