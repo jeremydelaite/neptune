@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { ArrowLeft, UserPlus, UserCheck, AlertTriangle, Clock3, Ban, X, Check, Trash2 } from "lucide-react-native";
 import { api } from "../src/services/api";
+import { setUnread } from "../src/lib/notifState";
 import { colors } from "../src/theme/colors";
 import { fonts, radius } from "../src/theme/typography";
 
@@ -60,6 +61,7 @@ export default function NotificationsScreen() {
       const list = await api.get<Notif[]>("/notifications");
       setNotifs(list);
       await api.post("/notifications/read-all", {}).catch(() => {});
+      setUnread(0); // la pastille (onglet + en-tête) disparaît aussitôt
     } catch {
       /* ignore */
     } finally {

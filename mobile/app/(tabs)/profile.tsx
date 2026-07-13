@@ -19,6 +19,7 @@ import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
 import { FriendSearchModal } from "../../src/components/social/FriendSearchModal";
+import { setUnread as setUnreadStore, subscribeUnread } from "../../src/lib/notifState";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
 
@@ -110,6 +111,13 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      const unsub = subscribeUnread(setUnread);
+      return unsub;
+    }, [])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
       let active = true;
       if (!hasLoaded.current) setLoading(true); // loader seulement au 1er affichage
       Promise.all([
@@ -136,7 +144,7 @@ export default function ProfileScreen() {
       let active = true;
       api
         .get<{ count: number }>("/notifications/unread-count")
-        .then((c) => active && setUnread(c.count))
+        .then((c) => active && setUnreadStore(c.count))
         .catch(() => {});
       api
         .get<{ warning: string | null; avatarUrl: string | null; username: string; email: string; isAdmin?: boolean }>("/auth/me")

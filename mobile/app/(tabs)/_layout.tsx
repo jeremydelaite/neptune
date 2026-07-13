@@ -5,24 +5,27 @@ import { Tabs } from "expo-router";
 import { BlurView } from "expo-blur";
 import { Home, Search, MonitorPlay, User } from "lucide-react-native";
 import { api } from "../../src/services/api";
+import { setUnread, subscribeUnread, getUnread } from "../../src/lib/notifState";
 import { colors } from "../../src/theme/colors";
 
 export default function TabsLayout() {
-  const [hasUnread, setHasUnread] = useState(false);
+  const [hasUnread, setHasUnread] = useState(getUnread() > 0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const check = () =>
       api
         .get<{ count: number }>("/notifications/unread-count")
-        .then((c) => setHasUnread(c.count > 0))
+        .then((c) => setUnread(c.count))
         .catch(() => {});
+    const unsub = subscribeUnread((count) => setHasUnread(count > 0)); // réagit immédiatement
     check();
     timer.current = setInterval(check, 20000); // rafraîchit toutes les 20 s
     const sub = AppState.addEventListener("change", (st) => st === "active" && check());
     return () => {
       if (timer.current) clearInterval(timer.current);
       sub.remove();
+      unsub();
     };
   }, []);
 
