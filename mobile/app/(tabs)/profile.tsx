@@ -372,28 +372,21 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
 
-            {/* Accès aux listes À voir / Vu (même rendu que la carte Amis) */}
-            <Pressable style={styles.friendsCard} onPress={() => router.push("/watchlist")}>
-              <View style={styles.linkIcon}>
-                <Bookmark size={18} color={colors.accentPastel} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.friendsValue}>À voir</Text>
-                <Text style={styles.friendsSub}>Ta liste à regarder</Text>
-              </View>
-              <ChevronRight size={20} color={colors.dim} />
-            </Pressable>
-            <View style={{ height: 10 }} />
-            <Pressable style={[styles.friendsCard, { marginBottom: 14 }]} onPress={() => router.push("/watched")}>
-              <View style={styles.linkIcon}>
-                <Eye size={18} color={colors.accentPastel} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.friendsValue}>Vu</Text>
-                <Text style={styles.friendsSub}>Films et séries terminés</Text>
-              </View>
-              <ChevronRight size={20} color={colors.dim} />
-            </Pressable>
+            {/* Accès aux listes À voir / Vu — 2 cases par ligne */}
+            <View style={styles.linksRow}>
+              <Pressable style={styles.linkCard} onPress={() => router.push("/watchlist")}>
+                <View style={styles.linkIcon}>
+                  <Bookmark size={18} color={colors.accentPastel} />
+                </View>
+                <Text style={styles.linkLabel}>À voir</Text>
+              </Pressable>
+              <Pressable style={styles.linkCard} onPress={() => router.push("/watched")}>
+                <View style={styles.linkIcon}>
+                  <Eye size={18} color={colors.accentPastel} />
+                </View>
+                <Text style={styles.linkLabel}>Vu</Text>
+              </Pressable>
+            </View>
 
             {/* Répartition des notes */}
             <View style={styles.card}>
