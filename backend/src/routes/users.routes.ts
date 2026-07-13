@@ -16,6 +16,7 @@ import {
   liftUser,
   reportPhoto,
   adminDeleteAvatar,
+  dismissPhotoReports,
 } from "../controllers/users.controller";
 
 const router = Router();
@@ -28,6 +29,7 @@ router.get("/:id/public", getPublicProfile);
 router.post("/:id/report", reportUser);
 router.post("/:id/report-photo", reportPhoto);
 router.delete("/:id/avatar", adminDeleteAvatar); // admin
+router.post("/:id/dismiss-photo-reports", dismissPhotoReports); // admin
 router.post("/:id/block", blockUser);
 router.delete("/:id/block", unblockUser);
 router.post("/:id/dismiss-reports", dismissUserReports); // admin

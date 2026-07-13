@@ -370,3 +370,11 @@ export async function searchUsers(req: AuthRequest, res: Response) {
   );
   res.json(withState);
 }
+
+
+// POST /users/:id/dismiss-photo-reports — admin : ignore les signalements de photo (garde la photo)
+export async function dismissPhotoReports(req: AuthRequest, res: Response) {
+  if (!(await isAdmin(req.userId!))) return res.status(403).json({ error: "Accès refusé" });
+  await prisma.avatarReport.deleteMany({ where: { reportedUserId: req.params.id } });
+  res.json({ ok: true });
+}

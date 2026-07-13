@@ -213,6 +213,11 @@ export default function ProfileScreen() {
     await api.delete(`/users/${id}/avatar`).catch(() => {});
   }
 
+  async function dismissPhoto(id: string) {
+    setReportedPhotos((prev) => prev.filter((u) => u.id !== id));
+    await api.post(`/users/${id}/dismiss-photo-reports`, {}).catch(() => {});
+  }
+
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 
@@ -552,9 +557,14 @@ export default function ProfileScreen() {
                       {u.count} signalement{u.count > 1 ? "s" : ""}
                     </Text>
                   </Pressable>
-                  <Pressable onPress={() => deletePhoto(u.id)} hitSlop={8} style={{ padding: 4 }}>
-                    <ImageOff size={16} color={colors.danger} />
-                  </Pressable>
+                  <View style={{ flexDirection: "row", gap: 6 }}>
+                    <Pressable onPress={() => dismissPhoto(u.id)} hitSlop={8} style={{ padding: 4 }}>
+                      <CheckCircle2 size={16} color={colors.accentPastel} />
+                    </Pressable>
+                    <Pressable onPress={() => deletePhoto(u.id)} hitSlop={8} style={{ padding: 4 }}>
+                      <ImageOff size={16} color={colors.danger} />
+                    </Pressable>
+                  </View>
                 </View>
               ))
             )}
