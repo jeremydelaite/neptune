@@ -116,8 +116,8 @@ export default function SettingsScreen() {
     try {
       const manip = await ImageManipulator.manipulateAsync(
         res.assets[0].uri,
-        [{ resize: { width: 256 } }],
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+        [{ resize: { width: 512 } }],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
       const dataUri = `data:image/jpeg;base64,${manip.base64}`;
       const r = await api.patch<{ avatarUrl: string | null }>("/auth/avatar", { avatar: dataUri });

@@ -167,7 +167,7 @@ export async function updateAvatar(req: AuthRequest, res: Response) {
     avatar: z
       .string()
       .regex(/^data:image\/(png|jpe?g|webp);base64,/, "Format d'image invalide")
-      .max(600000, "Image trop lourde")
+      .max(900000, "Image trop lourde")
       .nullable(),
   });
   const parsed = schema.safeParse(req.body);
