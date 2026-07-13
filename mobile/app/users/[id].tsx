@@ -218,6 +218,18 @@ export default function PublicProfileScreen() {
               uri={profile.avatarUrl}
               fallback={profile.username.charAt(0).toUpperCase()}
               size={56}
+              actions={
+                !profile.isSelf && !profile.isAdmin && profile.avatarUrl
+                  ? [
+                      {
+                        label: photoReported ? "Photo signalée" : "Signaler la photo",
+                        onPress: reportPhoto,
+                        danger: true,
+                        done: photoReported,
+                      },
+                    ]
+                  : undefined
+              }
             />
             <View style={{ flex: 1 }}>
               <View style={styles.nameRow}>
@@ -285,18 +297,6 @@ export default function PublicProfileScreen() {
             </Text>
           )}
 
-          {profile.avatarUrl && !profile.isSelf && !profile.isAdmin && (
-            <Pressable
-              style={styles.photoReportBtn}
-              onPress={reportPhoto}
-              disabled={photoReported}
-            >
-              {photoReported ? <Check size={14} color={colors.accentPastel} /> : <Flag size={14} color={colors.danger} />}
-              <Text style={[styles.photoReportText, photoReported && { color: colors.accentPastel }]}>
-                {photoReported ? "Photo signalée" : "Signaler la photo de profil"}
-              </Text>
-            </Pressable>
-          )}
 
           {/* Statut de modération */}
           {profile.bannedAt && (
