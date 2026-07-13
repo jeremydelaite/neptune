@@ -352,23 +352,21 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Amis + ajout rapide */}
-            <View style={styles.friendsRow}>
-              <Pressable style={styles.friendsCard} onPress={() => setFriendSearch(true)}>
+            {/* Amis + ajout rapide — 2 cases identiques */}
+            <View style={styles.linksRow}>
+              <Pressable style={styles.linkCard} onPress={() => setFriendSearch(true)}>
                 <View style={styles.linkIcon}>
                   <Users size={18} color={colors.accentPastel} />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.friendsValue}>
-                    {stats.friendsCount} ami{stats.friendsCount > 1 ? "s" : ""}
-                  </Text>
-                  <Text style={styles.friendsSub}>Voir mes amis · rechercher</Text>
-                </View>
-                <Search size={18} color={colors.dim} />
+                <Text style={styles.linkLabel}>
+                  {stats.friendsCount} ami{stats.friendsCount > 1 ? "s" : ""}
+                </Text>
               </Pressable>
-              <Pressable style={styles.quickAddBtn} onPress={() => router.push("/quick-add")}>
-                <Plus size={22} color={colors.accentPastel} />
-                <Text style={styles.quickAddText}>Ajout{"\n"}rapide</Text>
+              <Pressable style={styles.linkCard} onPress={() => router.push("/quick-add")}>
+                <View style={styles.linkIcon}>
+                  <Plus size={18} color={colors.accentPastel} />
+                </View>
+                <Text style={styles.linkLabel}>Ajout rapide</Text>
               </Pressable>
             </View>
 
