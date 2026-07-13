@@ -151,14 +151,8 @@ export function QuickSeriesModal({
                   return (
                     <View key={s.season_number}>
                       <View style={styles.seasonRow}>
-                        <Pressable style={styles.seasonMain} onPress={() => toggleSeason(s.season_number)}>
-                          {isOpen ? <ChevronDown size={16} color={colors.dim} /> : <ChevronRight size={16} color={colors.dim} />}
-                          <Text style={styles.seasonName}>{s.name || `Saison ${s.season_number}`}</Text>
-                          <Text style={styles.seasonCount}>{s.episode_count} ép.</Text>
-                        </Pressable>
                         <Pressable
-                          style={styles.seasonCheckWrap}
-                          hitSlop={6}
+                          hitSlop={8}
                           onPress={() => setSel({ type: "season", season: s.season_number })}
                         >
                           <View
@@ -169,7 +163,11 @@ export function QuickSeriesModal({
                           >
                             {sel?.type === "season" && sel.season === s.season_number && <Check size={12} color="#fff" />}
                           </View>
-                          <Text style={styles.seasonCheckLabel}>Vue</Text>
+                        </Pressable>
+                        <Pressable style={styles.seasonMain} onPress={() => toggleSeason(s.season_number)}>
+                          <Text style={styles.seasonName}>{s.name || `Saison ${s.season_number}`}</Text>
+                          <Text style={styles.seasonCount}>{s.episode_count} ép.</Text>
+                          {isOpen ? <ChevronDown size={16} color={colors.dim} /> : <ChevronRight size={16} color={colors.dim} />}
                         </Pressable>
                       </View>
                       {isOpen && (
@@ -254,8 +252,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: colors.line,
   },
   seasonMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 10 },
-  seasonCheckWrap: { flexDirection: "row", alignItems: "center", gap: 5 },
-  seasonCheckLabel: { fontFamily: fonts.bodyMedium, fontSize: 11, color: colors.dim },
   seasonName: { flex: 1, fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
   seasonCount: { fontFamily: fonts.body, fontSize: 12, color: colors.dim },
   epList: { paddingLeft: 26, paddingBottom: 6 },
