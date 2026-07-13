@@ -20,12 +20,26 @@ export function FriendSearchModal({ visible, onClose }: { visible: boolean; onCl
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [friends, setFriends] = useState<Result[]>([]);
+  const [loadingFriends, setLoadingFriends] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       setQuery("");
       setResults([]);
+      return;
     }
+    // charge la liste d'amis à l'ouverture
+    let active = true;
+    setLoadingFriends(true);
+    api
+      .get<{ id: string; username: string; avatarUrl: string | null }[]>("/friends")
+      .then((list) => active && setFriends(list.map((f) => ({ ...f, friendStatus: "friends" as FriendStatus }))))
+      .catch(() => active && setFriends([]))
+      .finally(() => active && setLoadingFriends(false));
+    return () => {
+      active = false;
+    };
   }, [visible]);
 
   useEffect(() => {
@@ -66,6 +80,53 @@ export function FriendSearchModal({ visible, onClose }: { visible: boolean; onCl
     }
   }
 
+  function renderRow(r: Result) {
+    return (
+      <View key={r.id} style={styles.resRow}>
+        <Pressable
+          style={styles.resLeft}
+          onPress={() => {
+            onClose();
+            router.push(`/users/${r.id}`);
+          }}
+        >
+          {r.avatarUrl ? (
+            <Image source={{ uri: r.avatarUrl }} style={styles.resAvatar} />
+          ) : (
+            <View style={styles.resFallback}>
+              <Text style={styles.resLetter}>{r.username.charAt(0).toUpperCase()}</Text>
+            </View>
+          )}
+          <Text style={styles.resName} numberOfLines={1}>{r.username}</Text>
+        </Pressable>
+
+        {r.friendStatus === "friends" ? (
+          <View style={[styles.actBtn, styles.actFriends]}>
+            <Check size={14} color={colors.accentPastel} />
+            <Text style={styles.actFriendsText}>Amis</Text>
+          </View>
+        ) : r.friendStatus === "pending_out" ? (
+          <Pressable style={[styles.actBtn, styles.actPending]} onPress={() => act(r)}>
+            <Clock size={14} color={colors.dim} />
+            <Text style={styles.actPendingText}>Envoyée</Text>
+          </Pressable>
+        ) : r.friendStatus === "pending_in" ? (
+          <Pressable style={[styles.actBtn, styles.actAdd]} onPress={() => act(r)}>
+            <Check size={14} color="#fff" />
+            <Text style={styles.actAddText}>Accepter</Text>
+          </Pressable>
+        ) : (
+          <Pressable style={[styles.actBtn, styles.actAdd]} onPress={() => act(r)}>
+            <UserPlus size={14} color="#fff" />
+            <Text style={styles.actAddText}>Ajouter</Text>
+          </Pressable>
+        )}
+      </View>
+    );
+  }
+
+  const searching = query.trim().length >= 2;
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.backdrop}>
@@ -99,56 +160,27 @@ export function FriendSearchModal({ visible, onClose }: { visible: boolean; onCl
             )}
           </View>
 
-          <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 380 }}>
-            {loading ? (
-              <ActivityIndicator style={{ marginTop: 24 }} color={colors.accent} />
-            ) : query.trim().length < 2 ? (
-              <Text style={styles.hint}>Tape au moins 2 lettres pour chercher un utilisateur.</Text>
-            ) : results.length === 0 ? (
-              <Text style={styles.hint}>Aucun utilisateur trouvé.</Text>
-            ) : (
-              results.map((r) => (
-                <View key={r.id} style={styles.resRow}>
-                  <Pressable
-                    style={styles.resLeft}
-                    onPress={() => {
-                      onClose();
-                      router.push(`/users/${r.id}`);
-                    }}
-                  >
-                    {r.avatarUrl ? (
-                      <Image source={{ uri: r.avatarUrl }} style={styles.resAvatar} />
-                    ) : (
-                      <View style={styles.resFallback}>
-                        <Text style={styles.resLetter}>{r.username.charAt(0).toUpperCase()}</Text>
-                      </View>
-                    )}
-                    <Text style={styles.resName} numberOfLines={1}>{r.username}</Text>
-                  </Pressable>
+          {!searching && (
+            <Text style={styles.sectionTitle}>
+              Mes amis{friends.length ? ` (${friends.length})` : ""}
+            </Text>
+          )}
 
-                  {r.friendStatus === "friends" ? (
-                    <View style={[styles.actBtn, styles.actFriends]}>
-                      <Check size={14} color={colors.accentPastel} />
-                      <Text style={styles.actFriendsText}>Amis</Text>
-                    </View>
-                  ) : r.friendStatus === "pending_out" ? (
-                    <Pressable style={[styles.actBtn, styles.actPending]} onPress={() => act(r)}>
-                      <Clock size={14} color={colors.dim} />
-                      <Text style={styles.actPendingText}>Envoyée</Text>
-                    </Pressable>
-                  ) : r.friendStatus === "pending_in" ? (
-                    <Pressable style={[styles.actBtn, styles.actAdd]} onPress={() => act(r)}>
-                      <Check size={14} color="#fff" />
-                      <Text style={styles.actAddText}>Accepter</Text>
-                    </Pressable>
-                  ) : (
-                    <Pressable style={[styles.actBtn, styles.actAdd]} onPress={() => act(r)}>
-                      <UserPlus size={14} color="#fff" />
-                      <Text style={styles.actAddText}>Ajouter</Text>
-                    </Pressable>
-                  )}
-                </View>
-              ))
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 380 }}>
+            {searching ? (
+              loading ? (
+                <ActivityIndicator style={{ marginTop: 24 }} color={colors.accent} />
+              ) : results.length === 0 ? (
+                <Text style={styles.hint}>Aucun utilisateur trouvé.</Text>
+              ) : (
+                results.map(renderRow)
+              )
+            ) : loadingFriends ? (
+              <ActivityIndicator style={{ marginTop: 24 }} color={colors.accent} />
+            ) : friends.length === 0 ? (
+              <Text style={styles.hint}>Tu n'as pas encore d'amis. Cherche un pseudo ci-dessus pour en ajouter.</Text>
+            ) : (
+              friends.map(renderRow)
             )}
           </ScrollView>
         </View>
@@ -175,6 +207,7 @@ const styles = StyleSheet.create({
   searchBarFocused: { borderColor: colors.accent },
   input: { flex: 1, fontFamily: fonts.body, fontSize: 14, color: colors.text, height: "100%" },
   hint: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, textAlign: "center", marginTop: 24 },
+  sectionTitle: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim, marginTop: 4, marginBottom: 2 },
 
   resRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 10 },
   resLeft: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },

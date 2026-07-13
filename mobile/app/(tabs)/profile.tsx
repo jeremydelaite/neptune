@@ -361,7 +361,7 @@ export default function ProfileScreen() {
                 <Text style={styles.friendsValue}>
                   {stats.friendsCount} ami{stats.friendsCount > 1 ? "s" : ""}
                 </Text>
-                <Text style={styles.friendsSub}>Rechercher et ajouter des amis</Text>
+                <Text style={styles.friendsSub}>Voir mes amis · rechercher · ajouter</Text>
               </View>
               <Search size={18} color={colors.dim} />
             </Pressable>
