@@ -258,3 +258,24 @@ export async function liftUser(req: AuthRequest, res: Response) {
   await prisma.user.update({ where: { id: t.id }, data: { bannedAt: null, suspendedUntil: null } });
   res.json({ ok: true });
 }
+
+
+// GET /users/sanctioned — admin : comptes bannis ou suspendus (avec dates)
+export async function getSanctionedUsers(req: AuthRequest, res: Response) {
+  if (!(await isAdmin(req.userId!))) return res.status(403).json({ error: "Accès refusé" });
+  const now = new Date();
+  const users = await prisma.user.findMany({
+    where: { OR: [{ bannedAt: { not: null } }, { suspendedUntil: { gt: now } }] },
+    select: { id: true, username: true, avatarUrl: true, bannedAt: true, suspendedUntil: true },
+    orderBy: [{ bannedAt: "desc" }, { suspendedUntil: "desc" }],
+  });
+  res.json(
+    users.map((u) => ({
+      id: u.id,
+      username: u.username,
+      avatarUrl: u.avatarUrl,
+      bannedAt: u.bannedAt ? u.bannedAt.toISOString() : null,
+      suspendedUntil: u.suspendedUntil ? u.suspendedUntil.toISOString() : null,
+    }))
+  );
+}

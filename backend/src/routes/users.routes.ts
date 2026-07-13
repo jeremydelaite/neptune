@@ -6,6 +6,7 @@ import {
   unblockUser,
   getBlocked,
   getReportedUsers,
+  getSanctionedUsers,
   dismissUserReports,
   warnUser,
   suspendUser,
@@ -16,6 +17,7 @@ import {
 const router = Router();
 router.get("/blocked", getBlocked); // 1 segment — avant /:id/public
 router.get("/reported", getReportedUsers); // admin
+router.get("/sanctioned", getSanctionedUsers); // admin
 router.get("/:id/public", getPublicProfile);
 router.post("/:id/report", reportUser);
 router.post("/:id/block", blockUser);

@@ -42,6 +42,14 @@ interface ReportedUser {
   reasons: Record<string, number>;
 }
 
+interface SanctionedUser {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  bannedAt: string | null;
+  suspendedUntil: string | null;
+}
+
 interface ActivityItem {
   kind: "rating" | "comment";
   tmdbId: number;
@@ -75,6 +83,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [reported, setReported] = useState<ReportedComment[]>([]);
   const [reportedUsers, setReportedUsers] = useState<ReportedUser[]>([]);
+  const [sanctioned, setSanctioned] = useState<SanctionedUser[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const hasLoaded = useRef(false);
   const [warning, setWarning] = useState<string | null>(null);
@@ -132,6 +141,10 @@ export default function ProfileScreen() {
         .get<ReportedUser[]>("/users/reported")
         .then((r) => active && setReportedUsers(r))
         .catch(() => {});
+      api
+        .get<SanctionedUser[]>("/users/sanctioned")
+        .then((r) => active && setSanctioned(r))
+        .catch(() => {});
       return () => {
         active = false;
       };
@@ -142,6 +155,14 @@ export default function ProfileScreen() {
     setReportedUsers((prev) => prev.filter((u) => u.id !== id));
     await api.post(`/users/${id}/dismiss-reports`, {}).catch(() => {});
   }
+
+  async function liftSanction(id: string) {
+    setSanctioned((prev) => prev.filter((u) => u.id !== id));
+    await api.post(`/users/${id}/lift`, {}).catch(() => {});
+  }
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
 
   const REASON_LABELS: Record<string, string> = {
     SPAM: "Spam",
@@ -176,6 +197,8 @@ export default function ProfileScreen() {
         setReported(r);
         const ru = await api.get<ReportedUser[]>("/users/reported").catch(() => []);
         setReportedUsers(ru);
+        const sn = await api.get<SanctionedUser[]>("/users/sanctioned").catch(() => []);
+        setSanctioned(sn);
       }
     } catch {
       /* ignore */
@@ -420,6 +443,32 @@ export default function ProfileScreen() {
                 </View>
               ))
             )}
+
+            <View style={styles.modSubHeader}>
+              <ShieldAlert size={16} color={colors.danger} />
+              <Text style={styles.cardTitle}>Comptes sanctionnés</Text>
+            </View>
+            {sanctioned.length === 0 ? (
+              <Text style={styles.muted}>Aucun compte sanctionné.</Text>
+            ) : (
+              sanctioned.map((u, i) => (
+                <View key={u.id} style={[styles.actRow, i > 0 && styles.actRowBorder]}>
+                  <Pressable style={{ flex: 1 }} onPress={() => router.push(`/users/${u.id}`)}>
+                    <Text style={styles.actTitle} numberOfLines={1}>{u.username}</Text>
+                    <Text style={[styles.actComment, u.bannedAt && { color: "#F87171" }]} numberOfLines={1}>
+                      {u.bannedAt
+                        ? `Banni le ${fmtDate(u.bannedAt)}`
+                        : u.suspendedUntil
+                        ? `Suspendu jusqu'au ${fmtDate(u.suspendedUntil)}`
+                        : ""}
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={() => liftSanction(u.id)} hitSlop={8} style={styles.reactivateBtn}>
+                    <Text style={styles.reactivateText}>Réactiver</Text>
+                  </Pressable>
+                </View>
+              ))
+            )}
           </View>
         )}
 
@@ -542,6 +591,8 @@ const styles = StyleSheet.create({
   linkLabel: { flex: 1, fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
   modHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   modSubHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, marginBottom: 12, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 16 },
+  reactivateBtn: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: radius.sm, backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: colors.accent },
+  reactivateText: { fontFamily: fonts.headingSemi, fontSize: 11, color: colors.accentPastel },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
   warnBanner: {
