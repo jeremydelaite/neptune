@@ -25,12 +25,15 @@ interface LibraryItem {
   tmdbId: number;
   mediaType: MediaType;
   status: string;
+  addedAt?: string;
+  updatedAt?: string;
 }
 interface Entry {
   media: TmdbMedia;
   mediaType: MediaType;
 }
 type Filter = "ALL" | "MOVIE" | "TV";
+type Sort = "recent" | "oldest" | "az" | "za";
 
 const GAP = 12;
 const PADDING = 16;
@@ -47,6 +50,7 @@ export default function WatchedScreen() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState<Filter>("ALL");
+  const [sort, setSort] = useState<Sort>("recent");
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
 
@@ -100,13 +104,23 @@ export default function WatchedScreen() {
   }, [enrich]);
 
   const rebuild = useCallback(
-    async (f: Filter) => {
-      idsRef.current = allRef.current.filter((l) => f === "ALL" || l.mediaType === f);
+    async (f: Filter, sortMode: Sort) => {
+      let base = allRef.current.filter((l) => f === "ALL" || l.mediaType === f);
+      if (sortMode === "recent" || sortMode === "oldest") {
+        base = [...base].sort((a, b) => {
+          const da = new Date(a.updatedAt ?? a.addedAt ?? 0).getTime();
+          const db = new Date(b.updatedAt ?? b.addedAt ?? 0).getTime();
+          return sortMode === "recent" ? db - da : da - db;
+        });
+      }
+      idsRef.current = base;
       cursorRef.current = 0;
       setEntries([]);
-      await loadNext();
+      // tri alphabétique : on charge tout puis on trie par titre au rendu
+      if (sortMode === "az" || sortMode === "za") await loadAll();
+      else await loadNext();
     },
-    [loadNext]
+    [loadNext, loadAll]
   );
 
   const load = useCallback(async () => {
@@ -118,14 +132,14 @@ export default function WatchedScreen() {
           (l.mediaType === "MOVIE" && l.status === "COMPLETED") ||
           (l.mediaType === "TV" && (l.status === "WATCHING" || l.status === "COMPLETED"))
       );
-      await rebuild(filter);
+      await rebuild(filter, sort);
     } catch {
       allRef.current = [];
       idsRef.current = [];
     } finally {
       setLoading(false);
     }
-  }, [filter, rebuild]);
+  }, [filter, sort, rebuild]);
 
   useFocusEffect(
     useCallback(() => {
@@ -141,7 +155,13 @@ export default function WatchedScreen() {
   function selectFilter(f: Filter) {
     if (f === filter) return;
     setFilter(f);
-    rebuild(f);
+    rebuild(f, sort);
+  }
+
+  function selectSort(sm: Sort) {
+    if (sm === sort) return;
+    setSort(sm);
+    rebuild(filter, sm);
   }
 
   const goBack = () => {
@@ -151,13 +171,30 @@ export default function WatchedScreen() {
 
   const q = query.trim();
   const filtered = useMemo(() => {
-    if (q.length < 2) return entries;
-    const nq = norm(q);
-    return entries.filter((e) => norm(e.media.title ?? e.media.name ?? "").includes(nq));
-  }, [entries, q]);
+    let list = entries;
+    if (q.length >= 2) {
+      const nq = norm(q);
+      list = list.filter((e) => norm(e.media.title ?? e.media.name ?? "").includes(nq));
+    }
+    if (sort === "az" || sort === "za") {
+      list = [...list].sort((a, b) => {
+        const ta = norm(a.media.title ?? a.media.name ?? "");
+        const tb = norm(b.media.title ?? b.media.name ?? "");
+        return sort === "az" ? ta.localeCompare(tb) : tb.localeCompare(ta);
+      });
+    }
+    return list;
+  }, [entries, q, sort]);
 
   const hasMore = cursorRef.current < idsRef.current.length;
   const searching = q.length >= 2;
+  const paginating = !searching && sort !== "az" && sort !== "za";
+  const SORTS: { key: Sort; label: string }[] = [
+    { key: "recent", label: "Récents" },
+    { key: "oldest", label: "Anciens" },
+    { key: "az", label: "A-Z" },
+    { key: "za", label: "Z-A" },
+  ];
   const TABS: { key: Filter; label: string }[] = [
     { key: "ALL", label: "Tout" },
     { key: "MOVIE", label: "Films" },
@@ -211,6 +248,21 @@ export default function WatchedScreen() {
         })}
       </View>
 
+      <View style={styles.sorts}>
+        {SORTS.map((so) => {
+          const active = sort === so.key;
+          return (
+            <Pressable
+              key={so.key}
+              style={[styles.sortPill, active && styles.sortPillActive]}
+              onPress={() => selectSort(so.key)}
+            >
+              <Text style={[styles.sortText, active && styles.sortTextActive]}>{so.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       {loading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.accent} />
       ) : (
@@ -220,7 +272,7 @@ export default function WatchedScreen() {
           numColumns={3}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
-          onEndReached={searching ? undefined : loadNext}
+          onEndReached={paginating ? loadNext : undefined}
           onEndReachedThreshold={0.5}
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => (
@@ -238,7 +290,7 @@ export default function WatchedScreen() {
             </Text>
           }
           ListFooterComponent={
-            loadingMore && hasMore && !searching ? (
+            loadingMore && hasMore && paginating ? (
               <ActivityIndicator style={{ marginVertical: 16 }} color={colors.accent} />
             ) : null
           }
@@ -290,6 +342,19 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   tabText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim },
   tabTextActive: { color: "#fff" },
+
+  sorts: { flexDirection: "row", gap: 8, paddingHorizontal: PADDING, paddingBottom: 10 },
+  sortPill: {
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  sortPillActive: { backgroundColor: colors.accentSoft, borderColor: colors.accent },
+  sortText: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.dim },
+  sortTextActive: { color: colors.accentPastel },
 
   list: { paddingHorizontal: PADDING, paddingTop: 4, paddingBottom: 100 },
   row: { gap: GAP, marginBottom: GAP },
