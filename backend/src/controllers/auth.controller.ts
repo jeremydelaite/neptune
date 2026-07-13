@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { prisma } from "../lib/prisma";
+import crypto from "crypto";
+import { sendVerificationEmail } from "../lib/mail";
 import { AuthRequest } from "../middleware/auth";
 
 const registerSchema = z.object({
@@ -30,6 +32,15 @@ export function accountBlockMessage(u: { bannedAt: Date | null; suspendedUntil: 
   return null;
 }
 
+function newVerifyToken() {
+  return {
+    token: crypto.randomBytes(24).toString("hex"),
+    exp: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 h
+  };
+}
+
+const PUBLIC_URL = process.env.PUBLIC_URL ?? "http://localhost:3000";
+
 export async function register(req: Request, res: Response) {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
@@ -38,12 +49,22 @@ export async function register(req: Request, res: Response) {
   const exists = await prisma.user.findFirst({ where: { OR: [{ email }, { username }] } });
   if (exists) return res.status(409).json({ error: "Email ou pseudo déjà utilisé" });
 
+  const { token, exp } = newVerifyToken();
   const user = await prisma.user.create({
-    data: { email, username, passwordHash: await bcrypt.hash(password, 10) },
+    data: {
+      email,
+      username,
+      passwordHash: await bcrypt.hash(password, 10),
+      emailVerified: false,
+      verifyToken: token,
+      verifyTokenExp: exp,
+    },
   });
+  await sendVerificationEmail(email, `${PUBLIC_URL}/auth/verify?token=${token}`, username);
   res.status(201).json({
-    token: signToken(user.id),
-    user: { id: user.id, username, email, isAdmin: user.isAdmin, avatarUrl: user.avatarUrl },
+    pendingVerification: true,
+    email,
+    message: "Compte créé. Vérifie ton email pour l'activer.",
   });
 }
 
@@ -58,6 +79,13 @@ export async function login(req: Request, res: Response) {
 
   const blocked = accountBlockMessage(user);
   if (blocked) return res.status(403).json({ error: blocked });
+
+  if (!user.emailVerified) {
+    return res.status(403).json({
+      error: "Valide ton adresse email avant de te connecter.",
+      code: "EMAIL_NOT_VERIFIED",
+    });
+  }
 
   res.json({
     token: signToken(user.id),
@@ -178,4 +206,37 @@ export async function updateAvatar(req: AuthRequest, res: Response) {
     data: { avatarUrl: parsed.data.avatar },
   });
   res.json({ avatarUrl: user.avatarUrl });
+}
+
+
+// GET /auth/verify?token= — valide le compte (page HTML simple)
+export async function verifyEmail(req: Request, res: Response) {
+  const token = String(req.query.token ?? "");
+  const page = (title: string, msg: string, ok: boolean) => `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Neptune</title></head><body style="font-family:sans-serif;background:#0F1115;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0"><div style="text-align:center;max-width:340px;padding:24px"><div style="font-size:40px">${ok ? "🪐" : "⚠️"}</div><h1 style="font-size:20px">${title}</h1><p style="color:#9aa">${msg}</p></div></body></html>`;
+
+  if (!token) return res.status(400).send(page("Lien invalide", "Aucun jeton fourni.", false));
+
+  const user = await prisma.user.findFirst({ where: { verifyToken: token } });
+  if (!user || !user.verifyTokenExp || user.verifyTokenExp < new Date()) {
+    return res.status(400).send(page("Lien expiré", "Ce lien de validation n'est plus valide. Demande-en un nouveau depuis l'app.", false));
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { emailVerified: true, verifyToken: null, verifyTokenExp: null },
+  });
+  res.send(page("Compte validé ✅", "Tu peux maintenant te connecter dans l'application Neptune.", true));
+}
+
+// POST /auth/resend-verification { email } — renvoie un lien
+export async function resendVerification(req: Request, res: Response) {
+  const email = String(req.body?.email ?? "").trim();
+  const user = await prisma.user.findUnique({ where: { email } });
+  // Réponse identique même si l'email n'existe pas (évite l'énumération de comptes)
+  if (user && !user.emailVerified) {
+    const { token, exp } = newVerifyToken();
+    await prisma.user.update({ where: { id: user.id }, data: { verifyToken: token, verifyTokenExp: exp } });
+    await sendVerificationEmail(user.email, `${PUBLIC_URL}/auth/verify?token=${token}`, user.username);
+  }
+  res.json({ ok: true });
 }

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator } from "react-native";
 import { Link } from "expo-router";
 import { useAuth } from "../../src/hooks/useAuth";
+import { api } from "../../src/services/api";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
 
@@ -11,18 +12,29 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [needVerify, setNeedVerify] = useState(false);
+  const [resent, setResent] = useState(false);
 
   async function handleLogin() {
     setError(null);
+    setNeedVerify(false);
+    setResent(false);
     setLoading(true);
     try {
       await login(email.trim(), password);
       // La redirection vers (tabs) est gérée par le RootNavigator
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Connexion impossible");
+      const msg = e instanceof Error ? e.message : "Connexion impossible";
+      setError(msg);
+      if (/email/i.test(msg) && /valide/i.test(msg)) setNeedVerify(true);
     } finally {
       setLoading(false);
     }
+  }
+
+  async function resend() {
+    await api.post("/auth/resend-verification", { email: email.trim() }).catch(() => {});
+    setResent(true);
   }
 
   return (
@@ -49,6 +61,13 @@ export default function LoginScreen() {
       />
 
       {error && <Text style={styles.error}>{error}</Text>}
+      {needVerify && (
+        <Pressable onPress={resend} style={{ marginBottom: 10 }}>
+          <Text style={styles.resend}>
+            {resent ? "Email de vérification renvoyé ✓" : "Renvoyer l'email de vérification"}
+          </Text>
+        </Pressable>
+      )}
 
       <Pressable style={styles.button} onPress={handleLogin} disabled={loading}>
         {loading ? (
@@ -81,6 +100,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body, fontSize: 14, marginBottom: 12,
   },
   error: { color: "#F87171", fontSize: 12, marginBottom: 10, textAlign: "center", fontFamily: fonts.body },
+  resend: { color: colors.accentPastel, fontSize: 13, textAlign: "center", fontFamily: fonts.headingSemi },
   button: {
     backgroundColor: colors.accent, borderRadius: radius.md,
     padding: 15, alignItems: "center", marginTop: 6,

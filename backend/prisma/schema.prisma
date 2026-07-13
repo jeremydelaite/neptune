@@ -55,6 +55,9 @@ model User {
   warning        String?   @map("warning")         // dernier avertissement non lu
   suspendedUntil DateTime? @map("suspended_until") // suspension temporaire
   bannedAt       DateTime? @map("banned_at")       // bannissement définitif
+  emailVerified  Boolean   @default(true) @map("email_verified") // true par défaut : n'affecte pas les comptes existants
+  verifyToken    String?   @map("verify_token")
+  verifyTokenExp DateTime? @map("verify_token_exp")
 
   trackedItems    TrackedItem[]
   watchedEpisodes WatchedEpisode[]

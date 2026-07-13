@@ -17,6 +17,7 @@ export default function RegisterScreen() {
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
   function validate(): string | null {
     if (!EMAIL_RE.test(email.trim())) return "Email invalide";
@@ -36,13 +37,39 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
-      await register(email.trim(), username.trim(), password);
-      // La redirection vers (tabs) est gérée par le RootNavigator
+      const r = await register(email.trim(), username.trim(), password);
+      if (r?.pendingVerification) setSent(true);
+      // sinon la redirection vers (tabs) est gérée par le RootNavigator
     } catch (e) {
       setError(e instanceof Error ? e.message : "Inscription impossible");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function resend() {
+    await import("../../src/services/api").then(({ api }) =>
+      api.post("/auth/resend-verification", { email: email.trim() }).catch(() => {})
+    );
+  }
+
+  if (sent) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.logo}>NEPTUNE</Text>
+        <Text style={styles.tagline}>Vérifie ton adresse email</Text>
+        <Text style={styles.info}>
+          Un email de confirmation a été envoyé à {email.trim()}. Clique sur le lien pour activer
+          ton compte, puis connecte-toi.
+        </Text>
+        <Pressable style={styles.button} onPress={resend}>
+          <Text style={styles.buttonText}>Renvoyer l'email</Text>
+        </Pressable>
+        <Link href="/(auth)/login" style={styles.link}>
+          <Text style={{ color: colors.accentPastel }}>Aller à la connexion</Text>
+        </Link>
+      </View>
+    );
   }
 
   return (
@@ -117,6 +144,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body, fontSize: 14, marginBottom: 12,
   },
   error: { color: "#F87171", fontSize: 12, marginBottom: 10, textAlign: "center", fontFamily: fonts.body },
+  info: { color: colors.dim, fontSize: 13, lineHeight: 20, textAlign: "center", fontFamily: fonts.body, marginBottom: 24 },
   button: {
     backgroundColor: colors.accent, borderRadius: radius.md,
     padding: 15, alignItems: "center", marginTop: 6,

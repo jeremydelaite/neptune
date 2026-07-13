@@ -8,7 +8,7 @@ interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, username: string, password: string) => Promise<void>;
+  register: (email: string, username: string, password: string) => Promise<{ pendingVerification?: boolean; email?: string }>;
   logout: () => Promise<void>;
   updateUser: (partial: Partial<User>) => Promise<void>;
 }
@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login: async (email, password) =>
           handleAuth(await api.post("/auth/login", { email, password })),
         register: async (email, username, password) =>
-          handleAuth(await api.post("/auth/register", { email, username, password })),
+          api.post<{ pendingVerification?: boolean; email?: string }>("/auth/register", { email, username, password }),
         logout: async () => {
           await AsyncStorage.multiRemove(["neptune_token", "neptune_user"]);
           setUser(null);
