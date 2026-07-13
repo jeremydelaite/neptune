@@ -217,7 +217,7 @@ export default function PublicProfileScreen() {
             <AvatarZoom
               uri={profile.avatarUrl}
               fallback={profile.username.charAt(0).toUpperCase()}
-              size={74}
+              size={88}
               actions={
                 !profile.isSelf && !profile.isAdmin && profile.avatarUrl
                   ? [
