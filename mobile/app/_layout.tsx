@@ -30,7 +30,7 @@ function RootNavigator() {
         contentStyle: { backgroundColor: colors.bg },
         animation: "slide_from_right",
         gestureEnabled: true,
-        fullScreenGestureEnabled: true, // iOS : swipe depuis n'importe où pour revenir
+        fullScreenGestureEnabled: false, // retour uniquement depuis le bord gauche (évite les faux retours en scrollant)
       }}
     />
   );
