@@ -23,7 +23,7 @@ interface CommentItem {
   content: string;
   createdAt: string;
   userId: string;
-  user: { username: string; avatarUrl: string | null };
+  user: { username: string; avatarUrl: string | null; isAdmin?: boolean };
 }
 
 const noOutline = Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : null;
@@ -208,7 +208,7 @@ export function Comments({
                   <Text style={styles.content}>{c.content}</Text>
                 )}
               </View>
-              {!mine && (
+              {!mine && !c.user.isAdmin && (
                 <Pressable
                   onPress={() => (reported.has(c.id) ? unreport(c.id) : setConfirmReport(c.id))}
                   hitSlop={8}

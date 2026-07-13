@@ -149,7 +149,7 @@ export default function PublicProfileScreen() {
             </View>
           </View>
 
-          {!profile.isSelf && (
+          {!profile.isSelf && !profile.isAdmin && (
             <View style={styles.actionsRow}>
               <Pressable style={[styles.actionBtn, blocked && styles.actionBtnActive]} onPress={toggleBlock} disabled={busy}>
                 {blocked ? <Eye size={16} color={colors.accentPastel} /> : <EyeOff size={16} color={colors.dim} />}

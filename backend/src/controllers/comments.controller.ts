@@ -4,7 +4,7 @@ import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth";
 import { containsProfanity } from "../lib/moderation";
 
-const withUser = { user: { select: { username: true, avatarUrl: true } } };
+const withUser = { user: { select: { username: true, avatarUrl: true, isAdmin: true } } };
 const PROFANITY_MSG = "Ton commentaire contient des propos inappropriés.";
 
 async function isAdmin(userId: string): Promise<boolean> {
