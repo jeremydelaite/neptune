@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff, Bell, Users, Plus } from "lucide-react-native";
+import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff, Bell, Users, Plus, ChevronRight } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
@@ -372,21 +372,28 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
 
-            {/* Accès aux listes À voir / Vu */}
-            <View style={styles.linksRow}>
-              <Pressable style={styles.linkCard} onPress={() => router.push("/watchlist")}>
-                <View style={styles.linkIcon}>
-                  <Bookmark size={18} color={colors.accentPastel} />
-                </View>
-                <Text style={styles.linkLabel}>À voir</Text>
-              </Pressable>
-              <Pressable style={styles.linkCard} onPress={() => router.push("/watched")}>
-                <View style={styles.linkIcon}>
-                  <Eye size={18} color={colors.accentPastel} />
-                </View>
-                <Text style={styles.linkLabel}>Vu</Text>
-              </Pressable>
-            </View>
+            {/* Accès aux listes À voir / Vu (même rendu que la carte Amis) */}
+            <Pressable style={styles.friendsCard} onPress={() => router.push("/watchlist")}>
+              <View style={styles.linkIcon}>
+                <Bookmark size={18} color={colors.accentPastel} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.friendsValue}>À voir</Text>
+                <Text style={styles.friendsSub}>Ta liste à regarder</Text>
+              </View>
+              <ChevronRight size={20} color={colors.dim} />
+            </Pressable>
+            <View style={{ height: 10 }} />
+            <Pressable style={[styles.friendsCard, { marginBottom: 14 }]} onPress={() => router.push("/watched")}>
+              <View style={styles.linkIcon}>
+                <Eye size={18} color={colors.accentPastel} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.friendsValue}>Vu</Text>
+                <Text style={styles.friendsSub}>Films et séries terminés</Text>
+              </View>
+              <ChevronRight size={20} color={colors.dim} />
+            </Pressable>
 
             {/* Répartition des notes */}
             <View style={styles.card}>
