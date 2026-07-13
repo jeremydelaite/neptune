@@ -20,6 +20,16 @@ function signToken(userId: string) {
   return jwt.sign({ userId }, process.env.JWT_SECRET!, { expiresIn: "30d" });
 }
 
+// Renvoie un message si le compte est banni ou suspendu, sinon null
+export function accountBlockMessage(u: { bannedAt: Date | null; suspendedUntil: Date | null }): string | null {
+  if (u.bannedAt) return "Ce compte a été banni définitivement.";
+  if (u.suspendedUntil && u.suspendedUntil > new Date()) {
+    const d = u.suspendedUntil.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+    return `Ce compte est suspendu jusqu'au ${d}.`;
+  }
+  return null;
+}
+
 export async function register(req: Request, res: Response) {
   const parsed = registerSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
@@ -45,9 +55,19 @@ export async function login(req: Request, res: Response) {
   if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
     return res.status(401).json({ error: "Email ou mot de passe incorrect" });
   }
+
+  const blocked = accountBlockMessage(user);
+  if (blocked) return res.status(403).json({ error: blocked });
+
   res.json({
     token: signToken(user.id),
-    user: { id: user.id, username: user.username, email: user.email, isAdmin: user.isAdmin },
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      isAdmin: user.isAdmin,
+      warning: user.warning ?? null,
+    },
   });
 }
 
@@ -72,7 +92,14 @@ export async function me(req: AuthRequest, res: Response) {
     email: user.email,
     isAdmin: user.isAdmin,
     createdAt: user.createdAt,
+    warning: user.warning ?? null,
   });
+}
+
+// POST /auth/dismiss-warning — l'utilisateur a lu son avertissement
+export async function dismissWarning(req: AuthRequest, res: Response) {
+  await prisma.user.update({ where: { id: req.userId }, data: { warning: null } });
+  res.json({ ok: true });
 }
 
 // PATCH /auth/profile — modifie pseudo et/ou email

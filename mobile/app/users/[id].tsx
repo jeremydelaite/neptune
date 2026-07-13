@@ -3,8 +3,10 @@ import { useCallback, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator, Modal, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check } from "lucide-react-native";
+import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check, AlertTriangle, Clock3, Ban, RotateCcw } from "lucide-react-native";
 import { api } from "../../src/services/api";
+import { useAuth } from "../../src/hooks/useAuth";
+import { TextInput } from "react-native";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
 
@@ -16,6 +18,8 @@ interface PublicProfile {
   createdAt: string;
   isSelf: boolean;
   isBlocked: boolean;
+  suspendedUntil: string | null;
+  bannedAt: string | null;
   stats: {
     moviesSeen: number;
     episodesSeen: number;
@@ -52,6 +56,7 @@ function shortDate(iso: string): string {
 
 export default function PublicProfileScreen() {
   const router = useRouter();
+  const { user: me } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,6 +64,9 @@ export default function PublicProfileScreen() {
   const [busy, setBusy] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [reportDone, setReportDone] = useState(false);
+  const [adminModal, setAdminModal] = useState<null | "warn" | "suspend" | "ban">(null);
+  const [warnText, setWarnText] = useState("");
+  const [busyAdmin, setBusyAdmin] = useState(false);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -83,6 +91,31 @@ export default function PublicProfileScreen() {
       };
     }, [id])
   );
+
+  async function refetch() {
+    try {
+      const p = await api.get<PublicProfile>(`/users/${id}/public`);
+      setProfile(p);
+      setBlocked(p.isBlocked);
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function adminAction(path: string, body: object = {}) {
+    if (!profile || busyAdmin) return;
+    setBusyAdmin(true);
+    try {
+      await api.post(`/users/${profile.id}/${path}`, body);
+      await refetch();
+    } catch {
+      /* ignore */
+    } finally {
+      setBusyAdmin(false);
+      setAdminModal(null);
+      setWarnText("");
+    }
+  }
 
   async function toggleBlock() {
     if (!profile || busy) return;
@@ -176,6 +209,50 @@ export default function PublicProfileScreen() {
             </Text>
           )}
 
+          {/* Statut de modération */}
+          {profile.bannedAt && (
+            <View style={[styles.statusBanner, styles.statusBan]}>
+              <Ban size={15} color="#F87171" />
+              <Text style={styles.statusBanText}>Compte banni définitivement</Text>
+            </View>
+          )}
+          {!profile.bannedAt && profile.suspendedUntil && new Date(profile.suspendedUntil) > new Date() && (
+            <View style={[styles.statusBanner, styles.statusSuspend]}>
+              <Clock3 size={15} color="#FBBF24" />
+              <Text style={styles.statusSuspendText}>
+                Suspendu jusqu'au{" "}
+                {new Date(profile.suspendedUntil).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
+              </Text>
+            </View>
+          )}
+
+          {/* Panneau admin */}
+          {me?.isAdmin && !profile.isSelf && !profile.isAdmin && (
+            <View style={styles.card}>
+              <Text style={styles.cardTitle}>Modération</Text>
+              <View style={styles.adminRow}>
+                <Pressable style={styles.adminBtn} onPress={() => setAdminModal("warn")} disabled={busyAdmin}>
+                  <AlertTriangle size={16} color={colors.accentPastel} />
+                  <Text style={styles.adminBtnText}>Avertir</Text>
+                </Pressable>
+                <Pressable style={styles.adminBtn} onPress={() => setAdminModal("suspend")} disabled={busyAdmin}>
+                  <Clock3 size={16} color="#FBBF24" />
+                  <Text style={styles.adminBtnText}>Suspendre</Text>
+                </Pressable>
+                <Pressable style={styles.adminBtn} onPress={() => setAdminModal("ban")} disabled={busyAdmin}>
+                  <Ban size={16} color="#F87171" />
+                  <Text style={styles.adminBtnText}>Bannir</Text>
+                </Pressable>
+              </View>
+              {(profile.bannedAt || (profile.suspendedUntil && new Date(profile.suspendedUntil) > new Date())) && (
+                <Pressable style={styles.liftBtn} onPress={() => adminAction("lift")} disabled={busyAdmin}>
+                  <RotateCcw size={16} color={colors.accentPastel} />
+                  <Text style={styles.adminBtnText}>Réactiver le compte</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
+
           {/* Chiffres clés */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
@@ -255,6 +332,82 @@ export default function PublicProfileScreen() {
           </View>
         </ScrollView>
       )}
+
+      {/* Avertir */}
+      <Modal visible={adminModal === "warn"} transparent animationType="fade" onRequestClose={() => setAdminModal(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setAdminModal(null)}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <Text style={styles.sheetTitle}>Avertir cet utilisateur</Text>
+            <Text style={styles.sheetSub}>Le message s'affichera à sa prochaine ouverture.</Text>
+            <TextInput
+              style={styles.warnInput}
+              value={warnText}
+              onChangeText={setWarnText}
+              placeholder="Motif de l'avertissement…"
+              placeholderTextColor={colors.dim}
+              multiline
+            />
+            <View style={styles.sheetActions}>
+              <Pressable style={[styles.sheetBtn, styles.sheetGhost]} onPress={() => setAdminModal(null)}>
+                <Text style={styles.sheetGhostText}>Annuler</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.sheetBtn, styles.sheetPrimary, (!warnText.trim() || busyAdmin) && { opacity: 0.45 }]}
+                onPress={() => adminAction("warn", { message: warnText.trim() })}
+                disabled={!warnText.trim() || busyAdmin}
+              >
+                <Text style={styles.sheetPrimaryText}>Envoyer</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Suspendre */}
+      <Modal visible={adminModal === "suspend"} transparent animationType="fade" onRequestClose={() => setAdminModal(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setAdminModal(null)}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <Text style={styles.sheetTitle}>Suspendre temporairement</Text>
+            <Text style={styles.sheetSub}>Durée de la suspension :</Text>
+            {[
+              { label: "1 jour", days: 1 },
+              { label: "7 jours", days: 7 },
+              { label: "30 jours", days: 30 },
+            ].map((o) => (
+              <Pressable key={o.days} style={styles.reasonRow} onPress={() => adminAction("suspend", { days: o.days })}>
+                <Text style={styles.reasonText}>{o.label}</Text>
+              </Pressable>
+            ))}
+            <Pressable style={styles.cancelRow} onPress={() => setAdminModal(null)}>
+              <Text style={styles.cancelText}>Annuler</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Bannir */}
+      <Modal visible={adminModal === "ban"} transparent animationType="fade" onRequestClose={() => setAdminModal(null)}>
+        <Pressable style={styles.backdrop} onPress={() => setAdminModal(null)}>
+          <Pressable style={styles.sheet} onPress={() => {}}>
+            <Text style={styles.sheetTitle}>Bannir définitivement</Text>
+            <Text style={styles.sheetSub}>
+              L'utilisateur ne pourra plus se connecter. Tu pourras réactiver le compte plus tard.
+            </Text>
+            <View style={styles.sheetActions}>
+              <Pressable style={[styles.sheetBtn, styles.sheetGhost]} onPress={() => setAdminModal(null)}>
+                <Text style={styles.sheetGhostText}>Annuler</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.sheetBtn, styles.sheetDanger, busyAdmin && { opacity: 0.45 }]}
+                onPress={() => adminAction("ban")}
+                disabled={busyAdmin}
+              >
+                <Text style={styles.sheetPrimaryText}>Bannir</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <Modal visible={reportOpen} transparent animationType="fade" onRequestClose={() => setReportOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setReportOpen(false)}>
@@ -376,4 +529,32 @@ const styles = StyleSheet.create({
   reasonText: { fontFamily: fonts.bodyMedium, fontSize: 14, color: colors.text },
   cancelRow: { paddingTop: 14, alignItems: "center" },
   cancelText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.dim },
+
+  statusBanner: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: radius.md, marginBottom: 14, marginTop: -4 },
+  statusBan: { backgroundColor: "rgba(248,113,113,0.12)", borderWidth: 1, borderColor: "rgba(248,113,113,0.4)" },
+  statusBanText: { fontFamily: fonts.headingSemi, fontSize: 13, color: "#F87171" },
+  statusSuspend: { backgroundColor: "rgba(251,191,36,0.12)", borderWidth: 1, borderColor: "rgba(251,191,36,0.4)" },
+  statusSuspendText: { fontFamily: fonts.headingSemi, fontSize: 13, color: "#FBBF24", flexShrink: 1 },
+
+  adminRow: { flexDirection: "row", gap: 10 },
+  adminBtn: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 12, borderRadius: radius.md, backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.line,
+  },
+  adminBtnText: { fontFamily: fonts.headingSemi, fontSize: 12, color: colors.text },
+  liftBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    marginTop: 10, paddingVertical: 12, borderRadius: radius.md, backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: colors.accent,
+  },
+  warnInput: {
+    backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.line, borderRadius: radius.md,
+    padding: 12, color: colors.text, fontFamily: fonts.body, fontSize: 14, minHeight: 80, textAlignVertical: "top", marginBottom: 14,
+  },
+  sheetActions: { flexDirection: "row", gap: 10, marginTop: 4 },
+  sheetBtn: { flex: 1, paddingVertical: 12, borderRadius: radius.md, alignItems: "center" },
+  sheetGhost: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.line },
+  sheetGhostText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.text },
+  sheetPrimary: { backgroundColor: colors.accent },
+  sheetPrimaryText: { fontFamily: fonts.headingSemi, fontSize: 13, color: "#fff" },
+  sheetDanger: { backgroundColor: "#DC2626" },
 });

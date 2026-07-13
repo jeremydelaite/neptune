@@ -7,6 +7,10 @@ import {
   getBlocked,
   getReportedUsers,
   dismissUserReports,
+  warnUser,
+  suspendUser,
+  banUser,
+  liftUser,
 } from "../controllers/users.controller";
 
 const router = Router();
@@ -17,4 +21,8 @@ router.post("/:id/report", reportUser);
 router.post("/:id/block", blockUser);
 router.delete("/:id/block", unblockUser);
 router.post("/:id/dismiss-reports", dismissUserReports); // admin
+router.post("/:id/warn", warnUser); // admin
+router.post("/:id/suspend", suspendUser); // admin
+router.post("/:id/ban", banUser); // admin
+router.post("/:id/lift", liftUser); // admin
 export default router;

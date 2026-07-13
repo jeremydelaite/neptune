@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings } from "lucide-react-native";
+import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
@@ -77,6 +77,7 @@ export default function ProfileScreen() {
   const [reportedUsers, setReportedUsers] = useState<ReportedUser[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const hasLoaded = useRef(false);
+  const [warning, setWarning] = useState<string | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -100,6 +101,24 @@ export default function ProfileScreen() {
       };
     }, [])
   );
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      api
+        .get<{ warning: string | null }>("/auth/me")
+        .then((m) => active && setWarning(m.warning ?? null))
+        .catch(() => {});
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
+
+  async function dismissWarning() {
+    setWarning(null);
+    await api.post("/auth/dismiss-warning", {}).catch(() => {});
+  }
 
   useFocusEffect(
     useCallback(() => {
@@ -205,6 +224,19 @@ export default function ProfileScreen() {
             <Settings size={22} color={colors.dim} />
           </Pressable>
         </View>
+
+        {warning && (
+          <View style={styles.warnBanner}>
+            <AlertTriangle size={18} color="#FBBF24" />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.warnTitle}>Avertissement de la modération</Text>
+              <Text style={styles.warnText}>{warning}</Text>
+            </View>
+            <Pressable onPress={dismissWarning} hitSlop={8} style={styles.warnDismiss}>
+              <Text style={styles.warnDismissText}>J'ai compris</Text>
+            </Pressable>
+          </View>
+        )}
 
         {loading ? (
           <ActivityIndicator style={{ marginTop: 40 }} color={colors.accent} />
@@ -512,4 +544,19 @@ const styles = StyleSheet.create({
   modSubHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, marginBottom: 12, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 16 },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
+  warnBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: radius.lg,
+    backgroundColor: "rgba(251,191,36,0.10)",
+    borderWidth: 1,
+    borderColor: "rgba(251,191,36,0.4)",
+    marginBottom: 14,
+  },
+  warnTitle: { fontFamily: fonts.headingSemi, fontSize: 13, color: "#FBBF24" },
+  warnText: { fontFamily: fonts.body, fontSize: 12, color: colors.text, marginTop: 2 },
+  warnDismiss: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: radius.sm, backgroundColor: colors.surface2 },
+  warnDismissText: { fontFamily: fonts.headingSemi, fontSize: 11, color: colors.accentPastel },
 });

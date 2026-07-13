@@ -37,8 +37,11 @@ model User {
   username     String   @unique
   passwordHash String   @map("password_hash")
   avatarUrl    String?  @map("avatar_url")
-  isAdmin      Boolean  @default(false) @map("is_admin")
-  createdAt    DateTime @default(now()) @map("created_at")
+  isAdmin      Boolean   @default(false) @map("is_admin")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  warning        String?   @map("warning")         // dernier avertissement non lu
+  suspendedUntil DateTime? @map("suspended_until") // suspension temporaire
+  bannedAt       DateTime? @map("banned_at")       // bannissement définitif
 
   trackedItems    TrackedItem[]
   watchedEpisodes WatchedEpisode[]

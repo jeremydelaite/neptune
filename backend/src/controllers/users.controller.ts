@@ -25,7 +25,7 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
 
   const user = await prisma.user.findUnique({
     where: { id },
-    select: { id: true, username: true, avatarUrl: true, isAdmin: true, createdAt: true },
+    select: { id: true, username: true, avatarUrl: true, isAdmin: true, createdAt: true, suspendedUntil: true, bannedAt: true },
   });
   if (!user) return res.status(404).json({ error: "Profil introuvable" });
 
@@ -84,6 +84,8 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
     createdAt: user.createdAt,
     isSelf: user.id === req.userId,
     isBlocked: !!blocked,
+    suspendedUntil: user.suspendedUntil ? user.suspendedUntil.toISOString() : null,
+    bannedAt: user.bannedAt ? user.bannedAt.toISOString() : null,
     stats: {
       moviesSeen,
       episodesSeen,
@@ -167,7 +169,7 @@ export async function getReportedUsers(req: AuthRequest, res: Response) {
     select: {
       reason: true,
       createdAt: true,
-      reportedUser: { select: { id: true, username: true, avatarUrl: true } },
+      reportedUser: { select: { id: true, username: true, avatarUrl: true, suspendedUntil: true, bannedAt: true } },
     },
   });
 
@@ -191,5 +193,68 @@ export async function getReportedUsers(req: AuthRequest, res: Response) {
 export async function dismissUserReports(req: AuthRequest, res: Response) {
   if (!(await isAdmin(req.userId!))) return res.status(403).json({ error: "Accès refusé" });
   await prisma.userReport.deleteMany({ where: { reportedUserId: req.params.id } });
+  res.json({ ok: true });
+}
+
+
+// Vérifie que l'admin peut agir sur cette cible (existe, ni soi-même, ni un autre admin)
+async function guardTarget(req: AuthRequest, res: Response): Promise<{ id: string } | null> {
+  if (!(await isAdmin(req.userId!))) {
+    res.status(403).json({ error: "Accès refusé" });
+    return null;
+  }
+  const id = req.params.id;
+  if (id === req.userId) {
+    res.status(400).json({ error: "Action impossible sur ton propre compte" });
+    return null;
+  }
+  const target = await prisma.user.findUnique({ where: { id }, select: { id: true, isAdmin: true } });
+  if (!target) {
+    res.status(404).json({ error: "Profil introuvable" });
+    return null;
+  }
+  if (target.isAdmin) {
+    res.status(400).json({ error: "Action impossible sur un administrateur" });
+    return null;
+  }
+  return { id };
+}
+
+// POST /users/:id/warn — avertir (message affiché à la prochaine ouverture)
+export async function warnUser(req: AuthRequest, res: Response) {
+  const t = await guardTarget(req, res);
+  if (!t) return;
+  const schema = z.object({ message: z.string().trim().min(1, "Message requis").max(500) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+  await prisma.user.update({ where: { id: t.id }, data: { warning: parsed.data.message } });
+  res.json({ ok: true });
+}
+
+// POST /users/:id/suspend — suspension temporaire (durée en jours)
+export async function suspendUser(req: AuthRequest, res: Response) {
+  const t = await guardTarget(req, res);
+  if (!t) return;
+  const schema = z.object({ days: z.number().int().min(1).max(3650) });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "Durée invalide" });
+  const until = new Date(Date.now() + parsed.data.days * 24 * 60 * 60 * 1000);
+  await prisma.user.update({ where: { id: t.id }, data: { suspendedUntil: until, bannedAt: null } });
+  res.json({ ok: true, suspendedUntil: until.toISOString() });
+}
+
+// POST /users/:id/ban — bannissement définitif
+export async function banUser(req: AuthRequest, res: Response) {
+  const t = await guardTarget(req, res);
+  if (!t) return;
+  await prisma.user.update({ where: { id: t.id }, data: { bannedAt: new Date(), suspendedUntil: null } });
+  res.json({ ok: true });
+}
+
+// POST /users/:id/lift — réactiver (annule suspension et bannissement)
+export async function liftUser(req: AuthRequest, res: Response) {
+  const t = await guardTarget(req, res);
+  if (!t) return;
+  await prisma.user.update({ where: { id: t.id }, data: { bannedAt: null, suspendedUntil: null } });
   res.json({ ok: true });
 }
