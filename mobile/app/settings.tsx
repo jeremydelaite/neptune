@@ -11,11 +11,12 @@ import {
   Platform,
   Image,
   Alert,
+  Modal,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft, Pencil, LogOut, Camera, Trash2 } from "lucide-react-native";
+import { ArrowLeft, Pencil, LogOut, Camera, Trash2, ChevronRight, EyeOff, X } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { api } from "../src/services/api";
@@ -62,6 +63,7 @@ export default function SettingsScreen() {
   const [passwordMsg, setPasswordMsg] = useState<Feedback>(null);
   const [confirmKind, setConfirmKind] = useState<null | "profile" | "password">(null);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [blockedOpen, setBlockedOpen] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
 
   const goBack = () => {
@@ -381,24 +383,6 @@ export default function SettingsScreen() {
             )}
           </View>
 
-          {/* Comptes masqués */}
-          {blockedUsers.length > 0 && (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Comptes masqués</Text>
-              {blockedUsers.map((b, i) => (
-                <View key={b.id} style={[styles.blockedRow, i > 0 && styles.blockedRowBorder]}>
-                  <View style={styles.blockedAvatar}>
-                    <Text style={styles.blockedAvatarText}>{b.username.charAt(0).toUpperCase()}</Text>
-                  </View>
-                  <Text style={styles.blockedName} numberOfLines={1}>{b.username}</Text>
-                  <Pressable style={styles.unblockBtn} onPress={() => unblock(b.id)}>
-                    <Text style={styles.unblockText}>Ne plus masquer</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          )}
-
           {/* Informations du compte */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Informations du compte</Text>
@@ -410,6 +394,13 @@ export default function SettingsScreen() {
               <Text style={styles.infoLabel}>Membre depuis</Text>
               <Text style={styles.infoValue}>{formatJoined(createdAt)}</Text>
             </View>
+            <Pressable style={[styles.infoRow, styles.infoRowBorder]} onPress={() => setBlockedOpen(true)}>
+              <Text style={styles.infoLabel}>Comptes masqués</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={styles.infoValue}>{blockedUsers.length}</Text>
+                <ChevronRight size={16} color={colors.dim} />
+              </View>
+            </Pressable>
           </View>
 
           {/* Déconnexion */}
@@ -422,6 +413,41 @@ export default function SettingsScreen() {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={blockedOpen} transparent animationType="fade" onRequestClose={() => setBlockedOpen(false)}>
+        <View style={styles.mBackdrop}>
+          <View style={styles.mSheet}>
+            <View style={styles.mHeader}>
+              <Text style={styles.mTitle}>Comptes masqués</Text>
+              <Pressable onPress={() => setBlockedOpen(false)} hitSlop={10}>
+                <X size={22} color={colors.dim} />
+              </Pressable>
+            </View>
+            {blockedUsers.length === 0 ? (
+              <Text style={styles.mHint}>Tu n'as masqué aucun compte.</Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled">
+                {blockedUsers.map((b, i) => (
+                  <View key={b.id} style={[styles.blockedRow, i > 0 && styles.blockedRowBorder]}>
+                    <View style={styles.blockedAvatar}>
+                      {b.avatarUrl ? (
+                        <Image source={{ uri: b.avatarUrl }} style={styles.blockedAvatarImg} />
+                      ) : (
+                        <Text style={styles.blockedAvatarText}>{b.username.charAt(0).toUpperCase()}</Text>
+                      )}
+                    </View>
+                    <Text style={styles.blockedName} numberOfLines={1}>{b.username}</Text>
+                    <Pressable style={styles.unblockBtn} onPress={() => unblock(b.id)}>
+                      <EyeOff size={13} color={colors.accentPastel} />
+                      <Text style={styles.unblockText}>Ne plus masquer</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
 
       <ConfirmModal
         visible={confirmKind !== null}
@@ -559,8 +585,19 @@ const styles = StyleSheet.create({
   logoutPressed: { opacity: 0.7 },
   logoutText: { fontFamily: fonts.headingSemi, fontSize: 15, color: colors.danger },
   unblockBtn: {
+    flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.sm,
     backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.line,
   },
   unblockText: { fontFamily: fonts.headingSemi, fontSize: 12, color: colors.accentPastel },
+
+  mBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" },
+  mSheet: {
+    backgroundColor: colors.bg, borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    padding: 18, paddingBottom: 30, borderTopWidth: 1, borderColor: colors.line,
+  },
+  mHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 },
+  mTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.text },
+  mHint: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, textAlign: "center", marginVertical: 20 },
+  blockedAvatarImg: { width: 34, height: 34, borderRadius: 999 },
 });
