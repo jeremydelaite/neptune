@@ -348,8 +348,19 @@ export async function searchUsers(req: AuthRequest, res: Response) {
   const q = String(req.query.q ?? "").trim();
   if (q.length < 2) return res.json([]);
 
+  // Masquage mutuel : exclut les comptes que j'ai masqués ET ceux qui m'ont masqué
+  const blocks = await prisma.blockedUser.findMany({
+    where: { OR: [{ userId: me }, { blockedUserId: me }] },
+    select: { userId: true, blockedUserId: true },
+  });
+  const hidden = new Set<string>();
+  for (const b of blocks) hidden.add(b.userId === me ? b.blockedUserId : b.userId);
+
   const users = await prisma.user.findMany({
-    where: { username: { contains: q, mode: "insensitive" }, id: { not: me } },
+    where: {
+      username: { contains: q, mode: "insensitive" },
+      id: { not: me, notIn: [...hidden] },
+    },
     select: { id: true, username: true, avatarUrl: true },
     take: 20,
   });
