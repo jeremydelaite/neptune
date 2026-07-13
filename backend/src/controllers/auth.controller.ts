@@ -43,7 +43,7 @@ export async function register(req: Request, res: Response) {
   });
   res.status(201).json({
     token: signToken(user.id),
-    user: { id: user.id, username, email, isAdmin: user.isAdmin },
+    user: { id: user.id, username, email, isAdmin: user.isAdmin, avatarUrl: user.avatarUrl },
   });
 }
 
@@ -66,6 +66,7 @@ export async function login(req: Request, res: Response) {
       username: user.username,
       email: user.email,
       isAdmin: user.isAdmin,
+      avatarUrl: user.avatarUrl,
       warning: user.warning ?? null,
     },
   });
@@ -91,6 +92,7 @@ export async function me(req: AuthRequest, res: Response) {
     username: user.username,
     email: user.email,
     isAdmin: user.isAdmin,
+    avatarUrl: user.avatarUrl,
     createdAt: user.createdAt,
     warning: user.warning ?? null,
   });
@@ -156,4 +158,24 @@ export async function updatePassword(req: AuthRequest, res: Response) {
     data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, 10) },
   });
   res.json({ ok: true });
+}
+
+
+// PATCH /auth/avatar — définit ou supprime la photo (data URI compressée, ou null)
+export async function updateAvatar(req: AuthRequest, res: Response) {
+  const schema = z.object({
+    avatar: z
+      .string()
+      .regex(/^data:image\/(png|jpe?g|webp);base64,/, "Format d'image invalide")
+      .max(600000, "Image trop lourde")
+      .nullable(),
+  });
+  const parsed = schema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+  const user = await prisma.user.update({
+    where: { id: req.userId },
+    data: { avatarUrl: parsed.data.avatar },
+  });
+  res.json({ avatarUrl: user.avatarUrl });
 }

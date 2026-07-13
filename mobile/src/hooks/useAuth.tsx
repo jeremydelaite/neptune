@@ -3,7 +3,7 @@ import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { api, setAccountBlockedHandler } from "../services/api";
 
-interface User { id: string; username: string; email: string; isAdmin?: boolean }
+interface User { id: string; username: string; email: string; isAdmin?: boolean; avatarUrl?: string | null }
 interface AuthContextValue {
   user: User | null;
   loading: boolean;

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { register, login, me, updateProfile, updatePassword, dismissWarning } from "../controllers/auth.controller";
+import { register, login, me, updateProfile, updatePassword, dismissWarning, updateAvatar } from "../controllers/auth.controller";
 import { requireAuth } from "../middleware/auth";
 
 const router = Router();
@@ -9,4 +9,5 @@ router.get("/me", requireAuth, me);
 router.patch("/profile", requireAuth, updateProfile);
 router.patch("/password", requireAuth, updatePassword);
 router.post("/dismiss-warning", requireAuth, dismissWarning);
+router.patch("/avatar", requireAuth, updateAvatar);
 export default router;

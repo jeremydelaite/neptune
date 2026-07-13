@@ -9,6 +9,7 @@ import {
   RefreshControl,
   TextInput,
   Platform,
+  Image,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -244,11 +245,15 @@ export default function ProfileScreen() {
       >
         {/* En-tête profil */}
         <View style={styles.profileRow}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(user?.username ?? "?").charAt(0).toUpperCase()}
-            </Text>
-          </View>
+          {user?.avatarUrl ? (
+            <Image source={{ uri: user.avatarUrl }} style={styles.avatarImg} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {(user?.username ?? "?").charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
           <View style={{ flex: 1 }}>
             <Text style={styles.username}>{user?.username}</Text>
             <Text style={styles.email}>{user?.email}</Text>
@@ -527,6 +532,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   avatarText: { fontFamily: fonts.heading, fontSize: 22, color: colors.accentPastel },
+  avatarImg: { width: 56, height: 56, borderRadius: 999, borderWidth: 1, borderColor: colors.accent },
   gear: {
     width: 40,
     height: 40,

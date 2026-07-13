@@ -1,6 +1,6 @@
 // PROFIL PUBLIC : stats + activité publique d'un utilisateur (clic sur un pseudo)
 import { useCallback, useState } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator, Modal, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, ActivityIndicator, Modal, Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check, AlertTriangle, Clock3, Ban, RotateCcw } from "lucide-react-native";
@@ -170,9 +170,13 @@ export default function PublicProfileScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           {/* En-tête */}
           <View style={styles.profileRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{profile.username.charAt(0).toUpperCase()}</Text>
-            </View>
+            {profile.avatarUrl ? (
+              <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImg} />
+            ) : (
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{profile.username.charAt(0).toUpperCase()}</Text>
+              </View>
+            )}
             <View style={{ flex: 1 }}>
               <View style={styles.nameRow}>
                 <Text style={styles.username}>{profile.username}</Text>
@@ -458,6 +462,7 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
   },
   avatarText: { fontFamily: fonts.heading, fontSize: 22, color: colors.accentPastel },
+  avatarImg: { width: 56, height: 56, borderRadius: 999, borderWidth: 1, borderColor: colors.accent },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   username: { fontFamily: fonts.heading, fontSize: 20, color: colors.text },
   joined: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, marginTop: 2 },

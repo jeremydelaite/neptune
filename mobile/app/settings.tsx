@@ -9,11 +9,15 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  Alert,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft, Pencil, LogOut } from "lucide-react-native";
+import { ArrowLeft, Pencil, LogOut, Camera, Trash2 } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { api } from "../src/services/api";
 import { useAuth } from "../src/hooks/useAuth";
 import { ConfirmModal } from "../src/components/ui/ConfirmModal";
@@ -58,6 +62,7 @@ export default function SettingsScreen() {
   const [passwordMsg, setPasswordMsg] = useState<Feedback>(null);
   const [confirmKind, setConfirmKind] = useState<null | "profile" | "password">(null);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -91,6 +96,49 @@ export default function SettingsScreen() {
   async function unblock(id: string) {
     setBlockedUsers((prev) => prev.filter((u) => u.id !== id));
     await api.delete(`/users/${id}/block`).catch(() => {});
+  }
+
+  async function pickAvatar() {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert("Autorisation requise", "Autorise l'accès à tes photos pour changer ta photo de profil.");
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 1,
+    });
+    if (res.canceled || !res.assets?.[0]) return;
+
+    setAvatarBusy(true);
+    try {
+      const manip = await ImageManipulator.manipulateAsync(
+        res.assets[0].uri,
+        [{ resize: { width: 256 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      const dataUri = `data:image/jpeg;base64,${manip.base64}`;
+      const r = await api.patch<{ avatarUrl: string | null }>("/auth/avatar", { avatar: dataUri });
+      await updateUser({ avatarUrl: r.avatarUrl });
+    } catch (e) {
+      Alert.alert("Échec", e instanceof Error ? e.message : "Impossible de changer la photo.");
+    } finally {
+      setAvatarBusy(false);
+    }
+  }
+
+  async function removeAvatar() {
+    setAvatarBusy(true);
+    try {
+      await api.patch("/auth/avatar", { avatar: null });
+      await updateUser({ avatarUrl: null });
+    } catch {
+      /* ignore */
+    } finally {
+      setAvatarBusy(false);
+    }
   }
 
   function cancelProfile() {
@@ -180,6 +228,36 @@ export default function SettingsScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {/* Photo de profil */}
+          <View style={[styles.card, styles.avatarCard]}>
+            <View style={styles.avatarWrap}>
+              {user?.avatarUrl ? (
+                <Image source={{ uri: user.avatarUrl }} style={styles.avatarImg} />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarLetter}>{(user?.username ?? "?").charAt(0).toUpperCase()}</Text>
+                </View>
+              )}
+              {avatarBusy && (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color="#fff" />
+                </View>
+              )}
+            </View>
+            <View style={{ flex: 1, gap: 8 }}>
+              <Pressable style={[styles.button, styles.btnOutline]} onPress={pickAvatar} disabled={avatarBusy}>
+                <Camera size={15} color={colors.accentPastel} />
+                <Text style={styles.btnOutlineText}>{user?.avatarUrl ? "Changer la photo" : "Ajouter une photo"}</Text>
+              </Pressable>
+              {user?.avatarUrl && (
+                <Pressable style={[styles.button, styles.btnGhost]} onPress={removeAvatar} disabled={avatarBusy}>
+                  <Trash2 size={15} color={colors.dim} />
+                  <Text style={styles.btnGhostText}>Supprimer</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+
           {/* Profil */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Profil</Text>
@@ -399,6 +477,18 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   cardTitle: { fontFamily: fonts.heading, fontSize: 15, color: colors.text, marginBottom: 14 },
+  avatarCard: { flexDirection: "row", alignItems: "center", gap: 16 },
+  avatarWrap: { width: 76, height: 76 },
+  avatarImg: { width: 76, height: 76, borderRadius: 999, borderWidth: 1, borderColor: colors.accent },
+  avatarFallback: {
+    width: 76, height: 76, borderRadius: 999, backgroundColor: colors.accentSoft,
+    alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: colors.accent,
+  },
+  avatarLetter: { fontFamily: fonts.heading, fontSize: 30, color: colors.accentPastel },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject, borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.45)", alignItems: "center", justifyContent: "center",
+  },
 
   label: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.dim, marginBottom: 6 },
   input: {
