@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   TextInput,
+  Platform,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,6 +18,8 @@ import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
+
+const noOutline = Platform.OS === "web" ? ({ outlineStyle: "none" } as any) : null;
 
 interface Stats {
   moviesSeen: number;
@@ -86,6 +89,7 @@ export default function ProfileScreen() {
   const [reportedUsers, setReportedUsers] = useState<ReportedUser[]>([]);
   const [sanctioned, setSanctioned] = useState<SanctionedUser[]>([]);
   const [sanctionQuery, setSanctionQuery] = useState("");
+  const [sanctionFocused, setSanctionFocused] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const hasLoaded = useRef(false);
   const [warning, setWarning] = useState<string | null>(null);
@@ -458,19 +462,22 @@ export default function ProfileScreen() {
               <Text style={styles.muted}>Aucun compte sanctionné.</Text>
             ) : (
               <>
-                <View style={styles.searchBar}>
-                  <Search size={16} color={colors.dim} />
+                <View style={[styles.searchBar, sanctionFocused && styles.searchBarFocused]}>
+                  <Search size={18} color={sanctionFocused ? colors.accentPastel : colors.dim} />
                   <TextInput
-                    style={styles.searchInput}
+                    style={[styles.searchInput, noOutline]}
                     value={sanctionQuery}
                     onChangeText={setSanctionQuery}
+                    onFocus={() => setSanctionFocused(true)}
+                    onBlur={() => setSanctionFocused(false)}
                     placeholder="Rechercher un compte…"
                     placeholderTextColor={colors.dim}
                     autoCapitalize="none"
+                    autoCorrect={false}
                   />
                   {sanctionQuery.length > 0 && (
                     <Pressable onPress={() => setSanctionQuery("")} hitSlop={8}>
-                      <X size={16} color={colors.dim} />
+                      <X size={18} color={colors.dim} />
                     </Pressable>
                   )}
                 </View>
@@ -623,16 +630,17 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: radius.md,
+    gap: 10,
     backgroundColor: colors.surface2,
     borderWidth: 1,
     borderColor: colors.line,
-    marginBottom: 6,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    height: 46,
+    marginBottom: 8,
   },
-  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.text, padding: 0 },
+  searchBarFocused: { borderColor: colors.accent },
+  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 14, color: colors.text, height: "100%" },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
   warnBanner: {
