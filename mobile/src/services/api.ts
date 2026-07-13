@@ -4,6 +4,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
+// Déconnexion forcée quand le backend signale un compte banni/suspendu (403 ACCOUNT_BLOCKED)
+let onAccountBlocked: ((message: string) => void) | null = null;
+export function setAccountBlockedHandler(fn: ((message: string) => void) | null) {
+  onAccountBlocked = fn;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await AsyncStorage.getItem("neptune_token");
   const res = await fetch(API_URL + path, {
@@ -16,7 +22,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error((body as { error?: string }).error ?? `Erreur ${res.status}`);
+    const err = body as { error?: string; code?: string };
+    if (res.status === 403 && err.code === "ACCOUNT_BLOCKED") {
+      onAccountBlocked?.(err.error ?? "Ton accès a été suspendu.");
+    }
+    throw new Error(err.error ?? `Erreur ${res.status}`);
   }
   return res.status === 204 ? (undefined as T) : res.json();
 }

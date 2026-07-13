@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { api } from "../services/api";
+import { api, setAccountBlockedHandler } from "../services/api";
 
 interface User { id: string; username: string; email: string; isAdmin?: boolean }
 interface AuthContextValue {
@@ -23,6 +24,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     AsyncStorage.getItem("neptune_user")
       .then((raw) => raw && setUser(JSON.parse(raw)))
       .finally(() => setLoading(false));
+  }, []);
+
+  // Déconnexion forcée si le backend signale un compte banni/suspendu
+  useEffect(() => {
+    setAccountBlockedHandler((message) => {
+      AsyncStorage.multiRemove(["neptune_token", "neptune_user"]);
+      setUser(null);
+      Alert.alert("Accès restreint", message);
+    });
+    return () => setAccountBlockedHandler(null);
   }, []);
 
   async function handleAuth(payload: { token: string; user: User }) {
