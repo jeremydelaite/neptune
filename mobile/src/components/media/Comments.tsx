@@ -9,7 +9,7 @@ import {
   StyleSheet,
   Platform,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Trash2, Send, Pencil, Check, X, Flag } from "lucide-react-native";
 import { ConfirmModal } from "../ui/ConfirmModal";
 import { api } from "../../services/api";
@@ -42,6 +42,7 @@ export function Comments({
   onFocusInput?: () => void;
 }) {
   const { user } = useAuth();
+  const router = useRouter();
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<"recent" | "old">("recent");
@@ -172,12 +173,18 @@ export function Comments({
           const editing = editingId === c.id;
           return (
             <View key={c.id} style={[styles.comment, mine && styles.commentMine]}>
-              <View style={styles.avatar}>
+              <Pressable
+                style={styles.avatar}
+                onPress={() => router.push(`/users/${c.userId}`)}
+                hitSlop={6}
+              >
                 <Text style={styles.avatarText}>{c.user.username.charAt(0).toUpperCase()}</Text>
-              </View>
+              </Pressable>
               <View style={{ flex: 1 }}>
                 <View style={styles.commentHead}>
-                  <Text style={styles.author}>{c.user.username}</Text>
+                  <Pressable onPress={() => router.push(`/users/${c.userId}`)} hitSlop={6}>
+                    <Text style={styles.author}>{c.user.username}</Text>
+                  </Pressable>
                   <Text style={styles.date}>{shortDate(c.createdAt)}</Text>
                 </View>
                 {editing ? (

@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import authRoutes from "./routes/auth.routes";
+import usersRoutes from "./routes/users.routes";
 import tmdbRoutes from "./routes/tmdb.routes";
 import libraryRoutes from "./routes/library.routes";
 import episodesRoutes from "./routes/episodes.routes";
@@ -25,6 +26,7 @@ app.use("/episodes", requireAuth, episodesRoutes);
 app.use("/ratings", requireAuth, ratingsRoutes);
 app.use("/comments", commentsRoutes); // GET public, POST protégé (géré dans la route)
 app.use("/stats", requireAuth, statsRoutes);
+app.use("/users", requireAuth, usersRoutes);
 app.use("/recommendations", requireAuth, recoRoutes);
 
 app.get("/health", (_req, res) => res.json({ status: "ok", app: "neptune-api" }));
