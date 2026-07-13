@@ -6,6 +6,7 @@ import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check, AlertTriangle, Clock3, Ban, RotateCcw } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
+import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
 import { TextInput } from "react-native";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
@@ -170,13 +171,11 @@ export default function PublicProfileScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           {/* En-tête */}
           <View style={styles.profileRow}>
-            {profile.avatarUrl ? (
-              <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImg} />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{profile.username.charAt(0).toUpperCase()}</Text>
-              </View>
-            )}
+            <AvatarZoom
+              uri={profile.avatarUrl}
+              fallback={profile.username.charAt(0).toUpperCase()}
+              size={56}
+            />
             <View style={{ flex: 1 }}>
               <View style={styles.nameRow}>
                 <Text style={styles.username}>{profile.username}</Text>

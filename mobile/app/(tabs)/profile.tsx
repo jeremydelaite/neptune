@@ -17,6 +17,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
+import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
 
@@ -245,15 +246,11 @@ export default function ProfileScreen() {
       >
         {/* En-tête profil */}
         <View style={styles.profileRow}>
-          {user?.avatarUrl ? (
-            <Image source={{ uri: user.avatarUrl }} style={styles.avatarImg} />
-          ) : (
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {(user?.username ?? "?").charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+          <AvatarZoom
+            uri={user?.avatarUrl}
+            fallback={(user?.username ?? "?").charAt(0).toUpperCase()}
+            size={56}
+          />
           <View style={{ flex: 1 }}>
             <Text style={styles.username}>{user?.username}</Text>
             <Text style={styles.email}>{user?.email}</Text>
