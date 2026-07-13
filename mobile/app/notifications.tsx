@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator, Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft, UserPlus, UserCheck, AlertTriangle, Clock3, Ban, X, Check } from "lucide-react-native";
+import { ArrowLeft, UserPlus, UserCheck, AlertTriangle, Clock3, Ban, X, Check, Trash2 } from "lucide-react-native";
 import { api } from "../src/services/api";
 import { colors } from "../src/theme/colors";
 import { fonts, radius } from "../src/theme/typography";
@@ -108,8 +108,8 @@ export default function NotificationsScreen() {
         </Pressable>
         <Text style={styles.title}>Notifications</Text>
         {notifs.length > 0 && (
-          <Pressable onPress={clearAll} hitSlop={10}>
-            <Text style={styles.clearAll}>Tout supprimer</Text>
+          <Pressable onPress={clearAll} hitSlop={12} style={styles.clearAll}>
+            <Trash2 size={20} color={colors.danger} />
           </Pressable>
         )}
       </View>
@@ -174,7 +174,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
   },
   title: { flex: 1, fontFamily: fonts.heading, fontSize: 24, color: colors.text },
-  clearAll: { fontFamily: fonts.headingSemi, fontSize: 12, color: colors.danger },
+  clearAll: {
+    width: 42, height: 42, borderRadius: 999, alignItems: "center", justifyContent: "center",
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+  },
   content: { padding: 16, paddingBottom: 100 },
   empty: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, textAlign: "center", marginTop: 40 },
 
