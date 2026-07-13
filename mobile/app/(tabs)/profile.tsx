@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff, Bell, Users } from "lucide-react-native";
+import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff, Bell, Users, Plus } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
@@ -352,19 +352,25 @@ export default function ProfileScreen() {
               </View>
             </View>
 
-            {/* Amis : nombre + recherche */}
-            <Pressable style={styles.friendsCard} onPress={() => setFriendSearch(true)}>
-              <View style={styles.linkIcon}>
-                <Users size={18} color={colors.accentPastel} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.friendsValue}>
-                  {stats.friendsCount} ami{stats.friendsCount > 1 ? "s" : ""}
-                </Text>
-                <Text style={styles.friendsSub}>Voir mes amis · rechercher · ajouter</Text>
-              </View>
-              <Search size={18} color={colors.dim} />
-            </Pressable>
+            {/* Amis + ajout rapide */}
+            <View style={styles.friendsRow}>
+              <Pressable style={styles.friendsCard} onPress={() => setFriendSearch(true)}>
+                <View style={styles.linkIcon}>
+                  <Users size={18} color={colors.accentPastel} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.friendsValue}>
+                    {stats.friendsCount} ami{stats.friendsCount > 1 ? "s" : ""}
+                  </Text>
+                  <Text style={styles.friendsSub}>Voir mes amis · rechercher</Text>
+                </View>
+                <Search size={18} color={colors.dim} />
+              </Pressable>
+              <Pressable style={styles.quickAddBtn} onPress={() => router.push("/quick-add")}>
+                <Plus size={22} color={colors.accentPastel} />
+                <Text style={styles.quickAddText}>Ajout{"\n"}rapide</Text>
+              </Pressable>
+            </View>
 
             {/* Accès aux listes À voir / Vu */}
             <View style={styles.linksRow}>
@@ -637,11 +643,17 @@ const styles = StyleSheet.create({
     borderWidth: 2, borderColor: colors.bg,
   },
   badgeText: { fontFamily: fonts.headingSemi, fontSize: 10, color: "#fff" },
+  friendsRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
   friendsCard: {
-    flexDirection: "row", alignItems: "center", gap: 12,
+    flex: 1, flexDirection: "row", alignItems: "center", gap: 12,
     backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
-    borderRadius: radius.lg, padding: 14, marginBottom: 14,
+    borderRadius: radius.lg, padding: 14,
   },
+  quickAddBtn: {
+    width: 84, alignItems: "center", justifyContent: "center", gap: 4,
+    backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: colors.accent, borderRadius: radius.lg,
+  },
+  quickAddText: { fontFamily: fonts.headingSemi, fontSize: 11, color: colors.accentPastel, textAlign: "center", lineHeight: 13 },
   friendsValue: { fontFamily: fonts.heading, fontSize: 16, color: colors.text },
   friendsSub: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginTop: 2 },
   gear: {

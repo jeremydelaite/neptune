@@ -52,6 +52,27 @@ router.get("/discover/tv", async (req, res) =>
   )
 );
 
+// Top de tous les temps (les plus votés = proxy "les plus vus")
+router.get("/top/movie", async (req, res) =>
+  res.json(
+    await tmdbFetch("/discover/movie", {
+      sort_by: "vote_count.desc",
+      include_adult: "false",
+      "vote_count.gte": "5000",
+      page: String(req.query.page ?? "1"),
+    })
+  )
+);
+router.get("/top/tv", async (req, res) =>
+  res.json(
+    await tmdbFetch("/discover/tv", {
+      sort_by: "vote_count.desc",
+      "vote_count.gte": "2000",
+      page: String(req.query.page ?? "1"),
+    })
+  )
+);
+
 // Fiche détail + saisons
 router.get("/movie/:id", async (req, res) => res.json(await tmdbFetch(`/movie/${req.params.id}`)));
 router.get("/movie/:id/similar", async (req, res) =>
