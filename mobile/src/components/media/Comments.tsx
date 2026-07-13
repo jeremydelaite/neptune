@@ -5,6 +5,7 @@ import {
   Text,
   TextInput,
   Pressable,
+  Image,
   ActivityIndicator,
   StyleSheet,
   Platform,
@@ -174,11 +175,16 @@ export function Comments({
           return (
             <View key={c.id} style={[styles.comment, mine && styles.commentMine]}>
               <Pressable
-                style={styles.avatar}
                 onPress={() => router.push(`/users/${c.userId}`)}
                 hitSlop={6}
               >
-                <Text style={styles.avatarText}>{c.user.username.charAt(0).toUpperCase()}</Text>
+                {c.user.avatarUrl ? (
+                  <Image source={{ uri: c.user.avatarUrl }} style={styles.avatarImg} />
+                ) : (
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{c.user.username.charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
               </Pressable>
               <View style={{ flex: 1 }}>
                 <View style={styles.commentHead}>
@@ -301,6 +307,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   avatarText: { fontFamily: fonts.headingSemi, fontSize: 14, color: colors.accentPastel },
+  avatarImg: { width: 34, height: 34, borderRadius: 999, borderWidth: 1, borderColor: colors.accent },
   commentHead: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 3 },
   author: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.text },
   date: { fontFamily: fonts.body, fontSize: 11, color: colors.dim },
