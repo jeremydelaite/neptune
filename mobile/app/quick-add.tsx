@@ -29,16 +29,18 @@ export default function QuickAddScreen() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [seriesTarget, setSeriesTarget] = useState<TmdbMedia | null>(null);
 
   const seenRef = useRef<Set<number>>(new Set()); // déjà en biblio + affichés + ajoutés
+  const moreBusyRef = useRef(false);
   const pageRef = useRef(0);
 
   // Récupère des pages TMDB jusqu'à obtenir "need" nouveaux titres (hors seenRef)
   const fetchPages = useCallback(async (t: Tab, need: number): Promise<TmdbMedia[]> => {
     const path = t === "MOVIE" ? "movie" : "tv";
     const out: TmdbMedia[] = [];
-    while (out.length < need && pageRef.current < 20) {
+    while (out.length < need && pageRef.current < 100) {
       pageRef.current += 1;
       try {
         const data = await api.get<{ results: TmdbMedia[] }>(`/tmdb/top/${path}?page=${pageRef.current}`);
@@ -104,6 +106,16 @@ export default function QuickAddScreen() {
     setRefreshing(false);
   }, [tab, fetchPages]);
 
+  const loadMore = useCallback(async () => {
+    if (moreBusyRef.current || loading || refreshing) return;
+    moreBusyRef.current = true;
+    setLoadingMore(true);
+    const more = await fetchPages(tab, 30);
+    if (more.length) setItems((prev) => [...prev, ...more]);
+    setLoadingMore(false);
+    moreBusyRef.current = false;
+  }, [tab, fetchPages, loading, refreshing]);
+
   function toggleSelect(id: number) {
     setSelected((prev) => {
       const n = new Set(prev);
@@ -167,6 +179,11 @@ export default function QuickAddScreen() {
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.accent} />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.6}
+          ListFooterComponent={
+            loadingMore ? <ActivityIndicator style={{ marginVertical: 16 }} color={colors.accent} /> : null
           }
           renderItem={({ item }) => {
             const isSel = selected.has(item.id);
