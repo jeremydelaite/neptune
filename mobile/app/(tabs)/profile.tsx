@@ -295,7 +295,7 @@ export default function ProfileScreen() {
           <AvatarZoom
             uri={user?.avatarUrl}
             fallback={(user?.username ?? "?").charAt(0).toUpperCase()}
-            size={88}
+            size={104}
           />
           <View style={{ flex: 1 }}>
             <Text style={styles.username}>{user?.username}</Text>
