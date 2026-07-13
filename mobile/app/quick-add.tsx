@@ -1,7 +1,7 @@
 // AJOUT RAPIDE : marquer d'un coup des films/séries déjà vus (top de tous les temps)
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  View, Text, Pressable, Image, FlatList, ActivityIndicator, StyleSheet, useWindowDimensions,
+  View, Text, Pressable, Image, FlatList, ActivityIndicator, RefreshControl, StyleSheet, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -28,6 +28,7 @@ export default function QuickAddScreen() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [seriesTarget, setSeriesTarget] = useState<TmdbMedia | null>(null);
 
   const seenRef = useRef<Set<number>>(new Set()); // déjà en biblio + affichés + ajoutés
@@ -84,6 +85,24 @@ export default function QuickAddScreen() {
     },
     [fetchPages]
   );
+
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    setSelected(new Set());
+    let more = await fetchPages(tab, TARGET);
+    if (more.length === 0) {
+      // top épuisé → on recommence depuis le début (en excluant la biblio)
+      seenRef.current = new Set();
+      pageRef.current = 0;
+      const lib = await api
+        .get<{ tmdbId: number; mediaType: Tab }[]>("/library")
+        .catch(() => [] as { tmdbId: number; mediaType: Tab }[]);
+      lib.filter((l) => l.mediaType === tab).forEach((l) => seenRef.current.add(l.tmdbId));
+      more = await fetchPages(tab, TARGET);
+    }
+    setItems(more);
+    setRefreshing(false);
+  }, [tab, fetchPages]);
 
   function toggleSelect(id: number) {
     setSelected((prev) => {
@@ -146,6 +165,9 @@ export default function QuickAddScreen() {
           numColumns={3}
           columnWrapperStyle={styles.row}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={colors.accent} />
+          }
           renderItem={({ item }) => {
             const isSel = selected.has(item.id);
             const uri = tmdbImage(item.poster_path, "w185");
