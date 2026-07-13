@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { LogOut, Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings } from "lucide-react-native";
+import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
@@ -58,7 +58,7 @@ function formatDate(iso: string): string {
 }
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
@@ -337,14 +337,6 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* Déconnexion */}
-        <Pressable
-          style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
-          onPress={logout}
-        >
-          <LogOut size={18} color={colors.danger} />
-          <Text style={styles.logoutText}>Se déconnecter</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -465,19 +457,5 @@ const styles = StyleSheet.create({
   modHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
-
-  logout: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginTop: 8,
-    backgroundColor: colors.dangerSoft,
-    borderWidth: 1,
-    borderColor: colors.dangerLine,
-    borderRadius: radius.md,
-    padding: 15,
-  },
-  logoutPressed: { opacity: 0.7 },
-  logoutText: { fontFamily: fonts.headingSemi, fontSize: 15, color: colors.danger },
 });
+                                                                                                                                                                                                                                                                                                                                                                                                        

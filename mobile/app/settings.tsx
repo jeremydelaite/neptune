@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft, Pencil } from "lucide-react-native";
+import { ArrowLeft, Pencil, LogOut } from "lucide-react-native";
 import { api } from "../src/services/api";
 import { useAuth } from "../src/hooks/useAuth";
 import { ConfirmModal } from "../src/components/ui/ConfirmModal";
@@ -40,7 +40,7 @@ interface BlockedUser { id: string; username: string; avatarUrl: string | null }
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, logout } = useAuth();
 
   const [username, setUsername] = useState(user?.username ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
@@ -333,6 +333,15 @@ export default function SettingsScreen() {
               <Text style={styles.infoValue}>{formatJoined(createdAt)}</Text>
             </View>
           </View>
+
+          {/* Déconnexion */}
+          <Pressable
+            style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
+            onPress={logout}
+          >
+            <LogOut size={18} color={colors.danger} />
+            <Text style={styles.logoutText}>Se déconnecter</Text>
+          </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -445,6 +454,20 @@ const styles = StyleSheet.create({
   },
   blockedAvatarText: { fontFamily: fonts.heading, fontSize: 14, color: colors.accentPastel },
   blockedName: { flex: 1, fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
+  logout: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 4,
+    backgroundColor: colors.dangerSoft,
+    borderWidth: 1,
+    borderColor: colors.dangerLine,
+    borderRadius: radius.md,
+    padding: 15,
+  },
+  logoutPressed: { opacity: 0.7 },
+  logoutText: { fontFamily: fonts.headingSemi, fontSize: 15, color: colors.danger },
   unblockBtn: {
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.sm,
     backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.line,
