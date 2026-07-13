@@ -80,7 +80,7 @@ function formatDate(iso: string): string {
 }
 
 export default function ProfileScreen() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
@@ -123,8 +123,19 @@ export default function ProfileScreen() {
     useCallback(() => {
       let active = true;
       api
-        .get<{ warning: string | null }>("/auth/me")
-        .then((m) => active && setWarning(m.warning ?? null))
+        .get<{ warning: string | null; avatarUrl: string | null; username: string; email: string; isAdmin?: boolean }>("/auth/me")
+        .then((m) => {
+          if (!active) return;
+          setWarning(m.warning ?? null);
+          // resynchronise le profil local (ex. avatar changé depuis un autre appareil)
+          if (
+            m.avatarUrl !== user?.avatarUrl ||
+            m.username !== user?.username ||
+            m.email !== user?.email
+          ) {
+            updateUser({ avatarUrl: m.avatarUrl, username: m.username, email: m.email, isAdmin: m.isAdmin });
+          }
+        })
         .catch(() => {});
       return () => {
         active = false;
