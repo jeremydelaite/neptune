@@ -4,6 +4,11 @@ import { AuthRequest } from "../middleware/auth";
 import { tmdbFetch } from "../services/tmdb.service";
 import { z } from "zod";
 
+async function isAdmin(userId: string): Promise<boolean> {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } });
+  return !!u?.isAdmin;
+}
+
 async function tmdbTitle(mediaType: "MOVIE" | "TV", tmdbId: number): Promise<string> {
   try {
     const path = mediaType === "MOVIE" ? `/movie/${tmdbId}` : `/tv/${tmdbId}`;
@@ -150,4 +155,41 @@ export async function getBlocked(req: AuthRequest, res: Response) {
     },
   });
   res.json(rows.map((r) => r.blockedUser));
+}
+
+
+// GET /users/reported — admin : comptes signalés (regroupés)
+export async function getReportedUsers(req: AuthRequest, res: Response) {
+  if (!(await isAdmin(req.userId!))) return res.status(403).json({ error: "Accès refusé" });
+
+  const reports = await prisma.userReport.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      reason: true,
+      createdAt: true,
+      reportedUser: { select: { id: true, username: true, avatarUrl: true } },
+    },
+  });
+
+  // Regroupe par utilisateur signalé
+  const map = new Map<
+    string,
+    { id: string; username: string; avatarUrl: string | null; count: number; reasons: Record<string, number> }
+  >();
+  for (const r of reports) {
+    const u = r.reportedUser;
+    const cur = map.get(u.id) ?? { id: u.id, username: u.username, avatarUrl: u.avatarUrl, count: 0, reasons: {} };
+    cur.count += 1;
+    cur.reasons[r.reason] = (cur.reasons[r.reason] ?? 0) + 1;
+    map.set(u.id, cur);
+  }
+
+  res.json([...map.values()].sort((a, b) => b.count - a.count));
+}
+
+// POST /users/:id/dismiss-reports — admin : ignore tous les signalements d'un compte
+export async function dismissUserReports(req: AuthRequest, res: Response) {
+  if (!(await isAdmin(req.userId!))) return res.status(403).json({ error: "Accès refusé" });
+  await prisma.userReport.deleteMany({ where: { reportedUserId: req.params.id } });
+  res.json({ ok: true });
 }

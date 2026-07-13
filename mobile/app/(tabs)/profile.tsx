@@ -34,6 +34,14 @@ interface ReportedComment {
   user: { username: string };
 }
 
+interface ReportedUser {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  count: number;
+  reasons: Record<string, number>;
+}
+
 interface ActivityItem {
   kind: "rating" | "comment";
   tmdbId: number;
@@ -66,6 +74,7 @@ export default function ProfileScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reported, setReported] = useState<ReportedComment[]>([]);
+  const [reportedUsers, setReportedUsers] = useState<ReportedUser[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const hasLoaded = useRef(false);
 
@@ -100,11 +109,28 @@ export default function ProfileScreen() {
         .get<ReportedComment[]>("/comments/reported")
         .then((r) => active && setReported(r))
         .catch(() => {});
+      api
+        .get<ReportedUser[]>("/users/reported")
+        .then((r) => active && setReportedUsers(r))
+        .catch(() => {});
       return () => {
         active = false;
       };
     }, [user?.isAdmin])
   );
+
+  async function dismissReportedUser(id: string) {
+    setReportedUsers((prev) => prev.filter((u) => u.id !== id));
+    await api.post(`/users/${id}/dismiss-reports`, {}).catch(() => {});
+  }
+
+  const REASON_LABELS: Record<string, string> = {
+    SPAM: "Spam",
+    HARASSMENT: "Harcèlement",
+    FAKE: "Faux compte",
+    INAPPROPRIATE: "Inapproprié",
+    OTHER: "Autre",
+  };
 
   async function deleteReported(id: string) {
     setReported((prev) => prev.filter((c) => c.id !== id));
@@ -129,6 +155,8 @@ export default function ProfileScreen() {
       if (user?.isAdmin) {
         const r = await api.get<ReportedComment[]>("/comments/reported").catch(() => []);
         setReported(r);
+        const ru = await api.get<ReportedUser[]>("/users/reported").catch(() => []);
+        setReportedUsers(ru);
       }
     } catch {
       /* ignore */
@@ -334,6 +362,32 @@ export default function ProfileScreen() {
                 </View>
               ))
             )}
+
+            <View style={styles.modSubHeader}>
+              <ShieldAlert size={16} color={colors.danger} />
+              <Text style={styles.cardTitle}>Comptes signalés</Text>
+            </View>
+            {reportedUsers.length === 0 ? (
+              <Text style={styles.muted}>Aucun compte signalé.</Text>
+            ) : (
+              reportedUsers.map((u, i) => (
+                <View key={u.id} style={[styles.actRow, i > 0 && styles.actRowBorder]}>
+                  <Pressable style={{ flex: 1 }} onPress={() => router.push(`/users/${u.id}`)}>
+                    <Text style={styles.actTitle} numberOfLines={1}>
+                      {u.username} · {u.count} signalement{u.count > 1 ? "s" : ""}
+                    </Text>
+                    <Text style={styles.actComment} numberOfLines={1}>
+                      {Object.entries(u.reasons)
+                        .map(([k, n]) => `${REASON_LABELS[k] ?? k} (${n})`)
+                        .join(" · ")}
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={() => dismissReportedUser(u.id)} hitSlop={8} style={{ padding: 4 }}>
+                    <CheckCircle2 size={16} color={colors.accentPastel} />
+                  </Pressable>
+                </View>
+              ))
+            )}
           </View>
         )}
 
@@ -455,6 +509,7 @@ const styles = StyleSheet.create({
   },
   linkLabel: { flex: 1, fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
   modHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
+  modSubHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, marginBottom: 12, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 16 },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
 });
