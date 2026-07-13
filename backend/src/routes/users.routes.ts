@@ -17,6 +17,9 @@ import {
   reportPhoto,
   adminDeleteAvatar,
   dismissPhotoReports,
+  getMyReports,
+  withdrawReport,
+  withdrawPhotoReport,
 } from "../controllers/users.controller";
 
 const router = Router();
@@ -25,9 +28,12 @@ router.get("/search", searchUsers);
 router.get("/reported", getReportedUsers); // admin
 router.get("/sanctioned", getSanctionedUsers); // admin
 router.get("/reported-photos", getReportedPhotos); // admin
+router.get("/my-reports", getMyReports);
 router.get("/:id/public", getPublicProfile);
 router.post("/:id/report", reportUser);
 router.post("/:id/report-photo", reportPhoto);
+router.delete("/:id/report", withdrawReport);
+router.delete("/:id/report-photo", withdrawPhotoReport);
 router.delete("/:id/avatar", adminDeleteAvatar); // admin
 router.post("/:id/dismiss-photo-reports", dismissPhotoReports); // admin
 router.post("/:id/block", blockUser);

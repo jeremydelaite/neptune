@@ -378,3 +378,48 @@ export async function dismissPhotoReports(req: AuthRequest, res: Response) {
   await prisma.avatarReport.deleteMany({ where: { reportedUserId: req.params.id } });
   res.json({ ok: true });
 }
+
+
+// GET /users/my-reports — mes signalements (comptes + photos)
+export async function getMyReports(req: AuthRequest, res: Response) {
+  const me = req.userId!;
+  const [accounts, photos] = await Promise.all([
+    prisma.userReport.findMany({
+      where: { reporterId: me },
+      orderBy: { createdAt: "desc" },
+      select: { reason: true, createdAt: true, reportedUser: { select: { id: true, username: true, avatarUrl: true } } },
+    }),
+    prisma.avatarReport.findMany({
+      where: { reporterId: me },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true, reportedUser: { select: { id: true, username: true, avatarUrl: true } } },
+    }),
+  ]);
+  const items = [
+    ...accounts.map((a) => ({
+      type: "account" as const,
+      reason: a.reason,
+      createdAt: a.createdAt.toISOString(),
+      user: a.reportedUser,
+    })),
+    ...photos.map((p) => ({
+      type: "photo" as const,
+      reason: null,
+      createdAt: p.createdAt.toISOString(),
+      user: p.reportedUser,
+    })),
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  res.json(items);
+}
+
+// DELETE /users/:id/report — retirer mon signalement de compte
+export async function withdrawReport(req: AuthRequest, res: Response) {
+  await prisma.userReport.deleteMany({ where: { reportedUserId: req.params.id, reporterId: req.userId! } });
+  res.json({ ok: true });
+}
+
+// DELETE /users/:id/report-photo — retirer mon signalement de photo
+export async function withdrawPhotoReport(req: AuthRequest, res: Response) {
+  await prisma.avatarReport.deleteMany({ where: { reportedUserId: req.params.id, reporterId: req.userId! } });
+  res.json({ ok: true });
+}

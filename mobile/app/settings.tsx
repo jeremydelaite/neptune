@@ -42,6 +42,15 @@ function formatJoined(iso: string | null): string {
 
 type Feedback = { type: "ok" | "err"; text: string } | null;
 interface BlockedUser { id: string; username: string; avatarUrl: string | null }
+interface MyReport {
+  type: "account" | "photo";
+  reason: string | null;
+  createdAt: string;
+  user: { id: string; username: string; avatarUrl: string | null };
+}
+const REASON_LABELS: Record<string, string> = {
+  SPAM: "Spam", HARASSMENT: "Harcèlement", FAKE: "Faux compte", INAPPROPRIATE: "Inapproprié", OTHER: "Autre",
+};
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -64,6 +73,8 @@ export default function SettingsScreen() {
   const [confirmKind, setConfirmKind] = useState<null | "profile" | "password">(null);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [blockedOpen, setBlockedOpen] = useState(false);
+  const [myReports, setMyReports] = useState<MyReport[]>([]);
+  const [reportsOpen, setReportsOpen] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
 
   const goBack = () => {
@@ -89,6 +100,10 @@ export default function SettingsScreen() {
         .get<BlockedUser[]>("/users/blocked")
         .then((list) => active && setBlockedUsers(list))
         .catch(() => {});
+      api
+        .get<MyReport[]>("/users/my-reports")
+        .then((list) => active && setMyReports(list))
+        .catch(() => {});
       return () => {
         active = false;
       };
@@ -98,6 +113,12 @@ export default function SettingsScreen() {
   async function unblock(id: string) {
     setBlockedUsers((prev) => prev.filter((u) => u.id !== id));
     await api.delete(`/users/${id}/block`).catch(() => {});
+  }
+
+  async function withdrawReport(r: MyReport) {
+    setMyReports((prev) => prev.filter((x) => !(x.user.id === r.user.id && x.type === r.type)));
+    const path = r.type === "photo" ? `/users/${r.user.id}/report-photo` : `/users/${r.user.id}/report`;
+    await api.delete(path).catch(() => {});
   }
 
   async function pickAvatar() {
@@ -401,6 +422,13 @@ export default function SettingsScreen() {
                 <ChevronRight size={16} color={colors.dim} />
               </View>
             </Pressable>
+            <Pressable style={[styles.infoRow, styles.infoRowBorder]} onPress={() => setReportsOpen(true)}>
+              <Text style={styles.infoLabel}>Mes signalements</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={styles.infoValue}>{myReports.length}</Text>
+                <ChevronRight size={16} color={colors.dim} />
+              </View>
+            </Pressable>
           </View>
 
           {/* Déconnexion */}
@@ -440,6 +468,46 @@ export default function SettingsScreen() {
                     <Pressable style={styles.unblockBtn} onPress={() => unblock(b.id)}>
                       <EyeOff size={13} color={colors.accentPastel} />
                       <Text style={styles.unblockText}>Ne plus masquer</Text>
+                    </Pressable>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={reportsOpen} transparent animationType="fade" onRequestClose={() => setReportsOpen(false)}>
+        <View style={styles.mBackdrop}>
+          <View style={styles.mSheet}>
+            <View style={styles.mHeader}>
+              <Text style={styles.mTitle}>Mes signalements</Text>
+              <Pressable onPress={() => setReportsOpen(false)} hitSlop={10}>
+                <X size={22} color={colors.dim} />
+              </Pressable>
+            </View>
+            {myReports.length === 0 ? (
+              <Text style={styles.mHint}>Tu n'as effectué aucun signalement.</Text>
+            ) : (
+              <ScrollView style={{ maxHeight: 380 }} keyboardShouldPersistTaps="handled">
+                {myReports.map((r, i) => (
+                  <View key={`${r.type}-${r.user.id}`} style={[styles.blockedRow, i > 0 && styles.blockedRowBorder]}>
+                    <View style={styles.blockedAvatar}>
+                      {r.user.avatarUrl ? (
+                        <Image source={{ uri: r.user.avatarUrl }} style={styles.blockedAvatarImg} />
+                      ) : (
+                        <Text style={styles.blockedAvatarText}>{r.user.username.charAt(0).toUpperCase()}</Text>
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.blockedName} numberOfLines={1}>{r.user.username}</Text>
+                      <Text style={styles.reportKind} numberOfLines={1}>
+                        {r.type === "photo" ? "Photo de profil" : `Compte · ${REASON_LABELS[r.reason ?? ""] ?? "Signalé"}`}
+                      </Text>
+                    </View>
+                    <Pressable style={styles.unblockBtn} onPress={() => withdrawReport(r)}>
+                      <Trash2 size={13} color={colors.danger} />
+                      <Text style={[styles.unblockText, { color: colors.danger }]}>Retirer</Text>
                     </Pressable>
                   </View>
                 ))}
@@ -600,4 +668,5 @@ const styles = StyleSheet.create({
   mTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.text },
   mHint: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, textAlign: "center", marginVertical: 20 },
   blockedAvatarImg: { width: 34, height: 34, borderRadius: 999 },
+  reportKind: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginTop: 2 },
 });
