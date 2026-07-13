@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator, Modal, Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check, AlertTriangle, Clock3, Ban, RotateCcw, ImageOff } from "lucide-react-native";
+import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check, AlertTriangle, Clock3, Ban, RotateCcw, ImageOff, UserPlus, UserCheck, UserMinus } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
@@ -20,6 +20,8 @@ interface PublicProfile {
   isSelf: boolean;
   isBlocked: boolean;
   photoReportedByMe: boolean;
+  friendStatus: "none" | "friends" | "pending_out" | "pending_in";
+  friendsCount: number;
   suspendedUntil: string | null;
   bannedAt: string | null;
   stats: {
@@ -67,6 +69,7 @@ export default function PublicProfileScreen() {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportDone, setReportDone] = useState(false);
   const [photoReported, setPhotoReported] = useState(false);
+  const [friend, setFriend] = useState<"none" | "friends" | "pending_out" | "pending_in">("none");
   const [adminModal, setAdminModal] = useState<null | "warn" | "suspend" | "ban">(null);
   const [warnText, setWarnText] = useState("");
   const [busyAdmin, setBusyAdmin] = useState(false);
@@ -87,6 +90,7 @@ export default function PublicProfileScreen() {
           setProfile(p);
           setBlocked(p.isBlocked);
           setPhotoReported(p.photoReportedByMe);
+          setFriend(p.friendStatus);
         })
         .catch(() => active && setProfile(null))
         .finally(() => active && setLoading(false));
@@ -102,6 +106,7 @@ export default function PublicProfileScreen() {
       setProfile(p);
       setBlocked(p.isBlocked);
       setPhotoReported(p.photoReportedByMe);
+      setFriend(p.friendStatus);
     } catch {
       /* ignore */
     }
@@ -144,6 +149,24 @@ export default function PublicProfileScreen() {
     { key: "INAPPROPRIATE", label: "Contenu inapproprié" },
     { key: "OTHER", label: "Autre" },
   ];
+
+  async function friendAction() {
+    if (!profile) return;
+    const id = profile.id;
+    if (friend === "none") {
+      setFriend("pending_out");
+      await api.post(`/friends/request/${id}`, {}).catch(() => setFriend("none"));
+    } else if (friend === "pending_out") {
+      setFriend("none");
+      await api.delete(`/friends/${id}`).catch(() => setFriend("pending_out"));
+    } else if (friend === "pending_in") {
+      setFriend("friends");
+      await api.post(`/friends/accept/${id}`, {}).catch(() => setFriend("pending_in"));
+    } else if (friend === "friends") {
+      setFriend("none");
+      await api.delete(`/friends/${id}`).catch(() => setFriend("friends"));
+    }
+  }
 
   async function reportPhoto() {
     if (!profile || photoReported) return;
@@ -202,8 +225,38 @@ export default function PublicProfileScreen() {
                 {profile.isAdmin && <ShieldCheck size={16} color={colors.accentPastel} />}
               </View>
               <Text style={styles.joined}>Membre depuis {formatJoined(profile.createdAt)}</Text>
+              <Text style={styles.joined}>{profile.friendsCount} ami{profile.friendsCount > 1 ? "s" : ""}</Text>
             </View>
           </View>
+
+          {!profile.isSelf && (
+            <Pressable
+              style={[styles.friendBtn, (friend === "friends" || friend === "pending_out") && styles.friendBtnMuted]}
+              onPress={friendAction}
+            >
+              {friend === "friends" ? (
+                <>
+                  <UserCheck size={16} color={colors.accentPastel} />
+                  <Text style={styles.friendBtnMutedText}>Amis</Text>
+                </>
+              ) : friend === "pending_out" ? (
+                <>
+                  <Clock3 size={16} color={colors.dim} />
+                  <Text style={styles.friendBtnMutedText}>Demande envoyée</Text>
+                </>
+              ) : friend === "pending_in" ? (
+                <>
+                  <Check size={16} color="#fff" />
+                  <Text style={styles.friendBtnText}>Accepter la demande</Text>
+                </>
+              ) : (
+                <>
+                  <UserPlus size={16} color="#fff" />
+                  <Text style={styles.friendBtnText}>Ajouter en ami</Text>
+                </>
+              )}
+            </Pressable>
+          )}
 
           {!profile.isSelf && !profile.isAdmin && (
             <View style={styles.actionsRow}>
@@ -546,6 +599,13 @@ const styles = StyleSheet.create({
   actComment: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginTop: 2 },
   actDate: { fontFamily: fonts.body, fontSize: 11, color: colors.dim },
 
+  friendBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    paddingVertical: 13, borderRadius: radius.md, backgroundColor: colors.accent, marginBottom: 12,
+  },
+  friendBtnText: { fontFamily: fonts.headingSemi, fontSize: 14, color: "#fff" },
+  friendBtnMuted: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line },
+  friendBtnMutedText: { fontFamily: fonts.headingSemi, fontSize: 14, color: colors.accentPastel },
   actionsRow: { flexDirection: "row", gap: 10, marginBottom: 14 },
   actionBtn: {
     flex: 1,

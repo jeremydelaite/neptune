@@ -29,6 +29,19 @@ enum TrackStatus {
   ARCHIVED // Archivée (masquée de "En cours")
 }
 
+enum FriendStatus {
+  PENDING // demande en attente
+  ACCEPTED // amis
+}
+
+enum NotifType {
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  WARNING
+  SUSPENSION
+  BAN
+}
+
 // ---------- MODÈLES ----------
 
 model User {
@@ -56,6 +69,10 @@ model User {
 
   avatarReportsMade     AvatarReport[] @relation("AvatarReporter")
   avatarReportsReceived AvatarReport[] @relation("AvatarReported")
+
+  friendRequestsSent     Friendship[]   @relation("FriendRequester")
+  friendRequestsReceived Friendship[]   @relation("FriendAddressee")
+  notifications          Notification[] @relation("UserNotifications")
 
   @@map("users")
 }
@@ -195,4 +212,37 @@ model AvatarReport {
 
   @@unique([reportedUserId, reporterId])
   @@map("avatar_reports")
+}
+
+
+// Relation d'amitié (demande + amitié acceptée)
+model Friendship {
+  id          String       @id @default(uuid())
+  requesterId String       @map("requester_id")
+  addresseeId String       @map("addressee_id")
+  status      FriendStatus @default(PENDING)
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  requester User @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addressee User @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+
+  @@unique([requesterId, addresseeId])
+  @@index([addresseeId, status])
+  @@map("friendships")
+}
+
+// Notification (demande d'ami, ami accepté, avertissement, suspension, bannissement)
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      NotifType
+  message   String
+  actorId   String?   @map("actor_id") // qui a déclenché (ex : demandeur d'ami)
+  read      Boolean   @default(false)
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
 }

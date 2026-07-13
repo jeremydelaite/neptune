@@ -14,10 +14,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff } from "lucide-react-native";
+import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff, Bell, Users } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
+import { FriendSearchModal } from "../../src/components/social/FriendSearchModal";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
 
@@ -27,6 +28,7 @@ interface Stats {
   moviesSeen: number;
   episodesSeen: number;
   seriesTimeMin: number;
+  friendsCount: number;
   ratingsBreakdown: { score: number; count: number }[];
   monthlyActivity: { month: string; count: number }[];
 }
@@ -103,6 +105,8 @@ export default function ProfileScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const hasLoaded = useRef(false);
   const [warning, setWarning] = useState<string | null>(null);
+  const [unread, setUnread] = useState(0);
+  const [friendSearch, setFriendSearch] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -130,6 +134,10 @@ export default function ProfileScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      api
+        .get<{ count: number }>("/notifications/unread-count")
+        .then((c) => active && setUnread(c.count))
+        .catch(() => {});
       api
         .get<{ warning: string | null; avatarUrl: string | null; username: string; email: string; isAdmin?: boolean }>("/auth/me")
         .then((m) => {
@@ -285,6 +293,14 @@ export default function ProfileScreen() {
             <Text style={styles.username}>{user?.username}</Text>
             <Text style={styles.email}>{user?.email}</Text>
           </View>
+          <Pressable onPress={() => router.push("/notifications")} hitSlop={12} style={styles.gear}>
+            <Bell size={22} color={colors.dim} />
+            {unread > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{unread > 9 ? "9+" : unread}</Text>
+              </View>
+            )}
+          </Pressable>
           <Pressable onPress={() => router.push("/settings")} hitSlop={12} style={styles.gear}>
             <Settings size={22} color={colors.dim} />
           </Pressable>
@@ -327,6 +343,20 @@ export default function ProfileScreen() {
                 <Text style={styles.statLabel}>De séries</Text>
               </View>
             </View>
+
+            {/* Amis : nombre + recherche */}
+            <Pressable style={styles.friendsCard} onPress={() => setFriendSearch(true)}>
+              <View style={styles.linkIcon}>
+                <Users size={18} color={colors.accentPastel} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.friendsValue}>
+                  {stats.friendsCount} ami{stats.friendsCount > 1 ? "s" : ""}
+                </Text>
+                <Text style={styles.friendsSub}>Rechercher et ajouter des amis</Text>
+              </View>
+              <Search size={18} color={colors.dim} />
+            </Pressable>
 
             {/* Accès aux listes À voir / Vu */}
             <View style={styles.linksRow}>
@@ -570,6 +600,8 @@ export default function ProfileScreen() {
         )}
 
       </ScrollView>
+
+      <FriendSearchModal visible={friendSearch} onClose={() => setFriendSearch(false)} />
     </SafeAreaView>
   );
 }
@@ -591,6 +623,19 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontFamily: fonts.heading, fontSize: 22, color: colors.accentPastel },
   avatarImg: { width: 56, height: 56, borderRadius: 999, borderWidth: 1, borderColor: colors.accent },
+  badge: {
+    position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 999,
+    backgroundColor: colors.danger, alignItems: "center", justifyContent: "center", paddingHorizontal: 4,
+    borderWidth: 2, borderColor: colors.bg,
+  },
+  badgeText: { fontFamily: fonts.headingSemi, fontSize: 10, color: "#fff" },
+  friendsCard: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    borderRadius: radius.lg, padding: 14, marginBottom: 14,
+  },
+  friendsValue: { fontFamily: fonts.heading, fontSize: 16, color: colors.text },
+  friendsSub: { fontFamily: fonts.body, fontSize: 12, color: colors.dim, marginTop: 2 },
   gear: {
     width: 40,
     height: 40,

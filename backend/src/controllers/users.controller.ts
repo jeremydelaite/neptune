@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth";
 import { tmdbFetch } from "../services/tmdb.service";
 import { z } from "zod";
+import { friendState, friendsCount, notify } from "../lib/social";
 
 async function isAdmin(userId: string): Promise<boolean> {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } });
@@ -81,6 +82,9 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
     }))
   );
 
+  const fState = req.userId ? await friendState(req.userId, id) : "none";
+  const fCount = await friendsCount(id);
+
   res.json({
     id: user.id,
     username: user.username,
@@ -88,6 +92,8 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
     isAdmin: user.isAdmin,
     createdAt: user.createdAt,
     isSelf: user.id === req.userId,
+    friendStatus: fState,
+    friendsCount: fCount,
     isBlocked: !!blocked,
     photoReportedByMe: !!photoReported,
     suspendedUntil: user.suspendedUntil ? user.suspendedUntil.toISOString() : null,
@@ -234,6 +240,7 @@ export async function warnUser(req: AuthRequest, res: Response) {
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
   await prisma.user.update({ where: { id: t.id }, data: { warning: parsed.data.message } });
+  await notify(t.id, "WARNING", parsed.data.message);
   res.json({ ok: true });
 }
 
@@ -246,6 +253,8 @@ export async function suspendUser(req: AuthRequest, res: Response) {
   if (!parsed.success) return res.status(400).json({ error: "Durée invalide" });
   const until = new Date(Date.now() + parsed.data.days * 24 * 60 * 60 * 1000);
   await prisma.user.update({ where: { id: t.id }, data: { suspendedUntil: until, bannedAt: null } });
+  const du = until.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+  await notify(t.id, "SUSPENSION", `Ton compte a été suspendu jusqu'au ${du}.`);
   res.json({ ok: true, suspendedUntil: until.toISOString() });
 }
 
@@ -254,6 +263,7 @@ export async function banUser(req: AuthRequest, res: Response) {
   const t = await guardTarget(req, res);
   if (!t) return;
   await prisma.user.update({ where: { id: t.id }, data: { bannedAt: new Date(), suspendedUntil: null } });
+  await notify(t.id, "BAN", "Ton compte a été banni définitivement.");
   res.json({ ok: true });
 }
 
@@ -329,4 +339,23 @@ export async function adminDeleteAvatar(req: AuthRequest, res: Response) {
   await prisma.user.update({ where: { id: req.params.id }, data: { avatarUrl: null } });
   await prisma.avatarReport.deleteMany({ where: { reportedUserId: req.params.id } });
   res.json({ ok: true });
+}
+
+
+// GET /users/search?q= — recherche d'utilisateurs par pseudo
+export async function searchUsers(req: AuthRequest, res: Response) {
+  const me = req.userId!;
+  const q = String(req.query.q ?? "").trim();
+  if (q.length < 2) return res.json([]);
+
+  const users = await prisma.user.findMany({
+    where: { username: { contains: q, mode: "insensitive" }, id: { not: me } },
+    select: { id: true, username: true, avatarUrl: true },
+    take: 20,
+  });
+
+  const withState = await Promise.all(
+    users.map(async (u) => ({ ...u, friendStatus: await friendState(me, u.id) }))
+  );
+  res.json(withState);
 }

@@ -8,6 +8,7 @@ import {
   getReportedUsers,
   getReportedPhotos,
   getSanctionedUsers,
+  searchUsers,
   dismissUserReports,
   warnUser,
   suspendUser,
@@ -19,6 +20,7 @@ import {
 
 const router = Router();
 router.get("/blocked", getBlocked); // 1 segment — avant /:id/public
+router.get("/search", searchUsers);
 router.get("/reported", getReportedUsers); // admin
 router.get("/sanctioned", getSanctionedUsers); // admin
 router.get("/reported-photos", getReportedPhotos); // admin

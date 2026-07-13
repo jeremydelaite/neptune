@@ -2,16 +2,18 @@ import { Response } from "express";
 import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth";
 import { tmdbFetch } from "../services/tmdb.service";
+import { friendsCount } from "../lib/social";
 
 // GET /stats — récap complet pour la page Compte
 export async function getStats(req: AuthRequest, res: Response) {
   const userId = req.userId!;
 
-  const [moviesSeen, episodes, ratings, epTime] = await Promise.all([
+  const [moviesSeen, episodes, ratings, epTime, friends] = await Promise.all([
     prisma.trackedItem.count({ where: { userId, mediaType: "MOVIE", status: "COMPLETED" } }),
     prisma.watchedEpisode.count({ where: { userId } }),
     prisma.rating.groupBy({ by: ["score"], where: { userId }, _count: true }),
     prisma.watchedEpisode.aggregate({ where: { userId }, _sum: { runtimeMin: true } }),
+    friendsCount(userId),
   ]);
 
   const activity = await prisma.$queryRaw<{ month: string; count: bigint }[]>`
@@ -25,6 +27,7 @@ export async function getStats(req: AuthRequest, res: Response) {
     moviesSeen,
     episodesSeen: episodes,
     seriesTimeMin: epTime._sum.runtimeMin ?? 0,
+    friendsCount: friends,
     ratingsBreakdown: [1, 2, 3, 4, 5].map((s) => ({
       score: s,
       count: ratings.find((r) => r.score === s)?._count ?? 0,
