@@ -1,5 +1,5 @@
 // AJOUT RAPIDE : marquer d'un coup des films/séries déjà vus (top de tous les temps)
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   View, Text, Pressable, Image, FlatList, ActivityIndicator, StyleSheet, useWindowDimensions,
 } from "react-native";
@@ -16,6 +16,7 @@ import type { TmdbMedia } from "../src/types";
 type Tab = "MOVIE" | "TV";
 const GAP = 12;
 const PADDING = 16;
+const TARGET = 100;
 
 export default function QuickAddScreen() {
   const router = useRouter();
@@ -29,37 +30,60 @@ export default function QuickAddScreen() {
   const [saving, setSaving] = useState(false);
   const [seriesTarget, setSeriesTarget] = useState<TmdbMedia | null>(null);
 
-  const load = useCallback(async (t: Tab) => {
-    setLoading(true);
-    setSelected(new Set());
-    // ce qui est déjà dans la bibliothèque (pour ne pas le reproposer)
-    const lib = await api
-      .get<{ tmdbId: number; mediaType: Tab }[]>("/library")
-      .catch(() => [] as { tmdbId: number; mediaType: Tab }[]);
-    const owned = new Set(lib.filter((l) => l.mediaType === t).map((l) => l.tmdbId));
+  const seenRef = useRef<Set<number>>(new Set()); // déjà en biblio + affichés + ajoutés
+  const pageRef = useRef(0);
 
+  // Récupère des pages TMDB jusqu'à obtenir "need" nouveaux titres (hors seenRef)
+  const fetchPages = useCallback(async (t: Tab, need: number): Promise<TmdbMedia[]> => {
     const path = t === "MOVIE" ? "movie" : "tv";
     const out: TmdbMedia[] = [];
-    const ids = new Set<number>();
-    for (let page = 1; page <= 6 && out.length < 100; page++) {
+    while (out.length < need && pageRef.current < 20) {
+      pageRef.current += 1;
       try {
-        const data = await api.get<{ results: TmdbMedia[] }>(`/tmdb/top/${path}?page=${page}`);
-        for (const m of data.results ?? []) {
-          if (ids.has(m.id) || owned.has(m.id) || !isLatinMedia(m) || m.adult) continue;
-          ids.add(m.id);
+        const data = await api.get<{ results: TmdbMedia[] }>(`/tmdb/top/${path}?page=${pageRef.current}`);
+        const results = data.results ?? [];
+        if (results.length === 0) break;
+        for (const m of results) {
+          if (seenRef.current.has(m.id) || !isLatinMedia(m) || m.adult) continue;
+          seenRef.current.add(m.id);
           out.push(m);
         }
       } catch {
         break;
       }
     }
-    setItems(out.slice(0, 100));
-    setLoading(false);
+    return out;
   }, []);
+
+  const load = useCallback(
+    async (t: Tab) => {
+      setLoading(true);
+      setSelected(new Set());
+      seenRef.current = new Set();
+      pageRef.current = 0;
+      const lib = await api
+        .get<{ tmdbId: number; mediaType: Tab }[]>("/library")
+        .catch(() => [] as { tmdbId: number; mediaType: Tab }[]);
+      lib.filter((l) => l.mediaType === t).forEach((l) => seenRef.current.add(l.tmdbId));
+      const first = await fetchPages(t, TARGET);
+      setItems(first);
+      setLoading(false);
+    },
+    [fetchPages]
+  );
 
   useEffect(() => {
     load(tab);
   }, [tab, load]);
+
+  // Complète la liste pour rester autour de TARGET après un retrait
+  const refill = useCallback(
+    async (t: Tab, need: number) => {
+      const more = await fetchPages(t, need);
+      if (more.length) setItems((prev) => [...prev, ...more]);
+    },
+    [fetchPages]
+  );
 
   function toggleSelect(id: number) {
     setSelected((prev) => {
@@ -79,6 +103,7 @@ export default function QuickAddScreen() {
     setItems((prev) => prev.filter((m) => !selected.has(m.id)));
     setSelected(new Set());
     setSaving(false);
+    refill("MOVIE", ids.length); // nouvelles propositions
   }
 
   const goBack = () => {
@@ -167,8 +192,12 @@ export default function QuickAddScreen() {
         title={seriesTarget?.name ?? seriesTarget?.title ?? ""}
         onClose={() => setSeriesTarget(null)}
         onDone={() => {
-          if (seriesTarget) setItems((prev) => prev.filter((m) => m.id !== seriesTarget.id));
+          const done = seriesTarget;
           setSeriesTarget(null);
+          if (done) {
+            setItems((prev) => prev.filter((m) => m.id !== done.id));
+            refill("TV", 1);
+          }
         }}
       />
     </SafeAreaView>
