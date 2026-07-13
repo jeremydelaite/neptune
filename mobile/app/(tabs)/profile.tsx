@@ -7,11 +7,12 @@ import {
   ScrollView,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle } from "lucide-react-native";
+import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { colors } from "../../src/theme/colors";
@@ -84,6 +85,7 @@ export default function ProfileScreen() {
   const [reported, setReported] = useState<ReportedComment[]>([]);
   const [reportedUsers, setReportedUsers] = useState<ReportedUser[]>([]);
   const [sanctioned, setSanctioned] = useState<SanctionedUser[]>([]);
+  const [sanctionQuery, setSanctionQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const hasLoaded = useRef(false);
   const [warning, setWarning] = useState<string | null>(null);
@@ -163,6 +165,10 @@ export default function ProfileScreen() {
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+
+  const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const q = sanctionQuery.trim();
+  const filteredSanctioned = q ? sanctioned.filter((u) => norm(u.username).includes(norm(q))) : sanctioned;
 
   const REASON_LABELS: Record<string, string> = {
     SPAM: "Spam",
@@ -451,7 +457,27 @@ export default function ProfileScreen() {
             {sanctioned.length === 0 ? (
               <Text style={styles.muted}>Aucun compte sanctionné.</Text>
             ) : (
-              sanctioned.map((u, i) => (
+              <>
+                <View style={styles.searchBar}>
+                  <Search size={16} color={colors.dim} />
+                  <TextInput
+                    style={styles.searchInput}
+                    value={sanctionQuery}
+                    onChangeText={setSanctionQuery}
+                    placeholder="Rechercher un compte…"
+                    placeholderTextColor={colors.dim}
+                    autoCapitalize="none"
+                  />
+                  {sanctionQuery.length > 0 && (
+                    <Pressable onPress={() => setSanctionQuery("")} hitSlop={8}>
+                      <X size={16} color={colors.dim} />
+                    </Pressable>
+                  )}
+                </View>
+                {filteredSanctioned.length === 0 ? (
+                  <Text style={styles.muted}>Aucun résultat pour « {q} ».</Text>
+                ) : null}
+                {filteredSanctioned.map((u, i) => (
                 <View key={u.id} style={[styles.actRow, i > 0 && styles.actRowBorder]}>
                   <Pressable style={{ flex: 1 }} onPress={() => router.push(`/users/${u.id}`)}>
                     <Text style={styles.actTitle} numberOfLines={1}>{u.username}</Text>
@@ -467,7 +493,8 @@ export default function ProfileScreen() {
                     <Text style={styles.reactivateText}>Réactiver</Text>
                   </Pressable>
                 </View>
-              ))
+                ))}
+              </>
             )}
           </View>
         )}
@@ -593,6 +620,19 @@ const styles = StyleSheet.create({
   modSubHeader: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, marginBottom: 12, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 16 },
   reactivateBtn: { paddingHorizontal: 10, paddingVertical: 7, borderRadius: radius.sm, backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: colors.accent },
   reactivateText: { fontFamily: fonts.headingSemi, fontSize: 11, color: colors.accentPastel },
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface2,
+    borderWidth: 1,
+    borderColor: colors.line,
+    marginBottom: 6,
+  },
+  searchInput: { flex: 1, fontFamily: fonts.body, fontSize: 13, color: colors.text, padding: 0 },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
   error: { fontFamily: fonts.body, fontSize: 13, color: colors.danger, textAlign: "center", marginTop: 40 },
   warnBanner: {
