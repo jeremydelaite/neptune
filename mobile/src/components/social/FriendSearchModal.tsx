@@ -1,7 +1,7 @@
 // Modale : rechercher des utilisateurs et gérer l'amitié
 import { useEffect, useState } from "react";
 import {
-  View, Text, TextInput, Pressable, Modal, Image, ActivityIndicator, ScrollView, Platform, StyleSheet,
+  View, Text, TextInput, Pressable, Modal, Image, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, StyleSheet,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Search, X, UserPlus, Check, Clock } from "lucide-react-native";
@@ -129,7 +129,10 @@ export function FriendSearchModal({ visible, onClose }: { visible: boolean; onCl
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <View style={styles.sheet}>
           <View style={styles.grabber} />
           <View style={styles.headerRow}>
@@ -184,7 +187,7 @@ export function FriendSearchModal({ visible, onClose }: { visible: boolean; onCl
             )}
           </ScrollView>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
