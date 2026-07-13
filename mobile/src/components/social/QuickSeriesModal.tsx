@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { View, Text, Pressable, Modal, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
 import { Check, X, ChevronDown, ChevronRight } from "lucide-react-native";
 import { api } from "../../services/api";
-import { ConfirmModal } from "../ui/ConfirmModal";
 import { colors } from "../../theme/colors";
 import { fonts, radius } from "../../theme/typography";
 
@@ -132,6 +131,26 @@ export function QuickSeriesModal({
 
           {loading ? (
             <ActivityIndicator style={{ marginVertical: 30 }} color={colors.accent} />
+          ) : confirm ? (
+            <View style={{ paddingVertical: 8 }}>
+              <Text style={styles.confirmMsg}>{confirmMsg}</Text>
+              <View style={styles.confirmRow}>
+                <Pressable
+                  style={[styles.confirmHalf, styles.confirmGhost]}
+                  onPress={() => setConfirm(false)}
+                  disabled={saving}
+                >
+                  <Text style={styles.confirmGhostText}>Annuler</Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.confirmHalf, styles.confirmFill, saving && styles.confirmBtnDisabled]}
+                  onPress={doConfirm}
+                  disabled={saving}
+                >
+                  {saving ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.confirmBtnText}>Ajouter</Text>}
+                </Pressable>
+              </View>
+            </View>
           ) : (
             <>
               <Pressable
@@ -214,15 +233,6 @@ export function QuickSeriesModal({
         </View>
       </View>
 
-      <ConfirmModal
-        visible={confirm}
-        title="Confirmer"
-        message={confirmMsg}
-        confirmLabel="Ajouter"
-        cancelLabel="Annuler"
-        onCancel={() => setConfirm(false)}
-        onConfirm={doConfirm}
-      />
     </Modal>
   );
 }
@@ -267,6 +277,12 @@ const styles = StyleSheet.create({
     marginTop: 16, backgroundColor: colors.accent, borderRadius: radius.md,
     paddingVertical: 15, alignItems: "center",
   },
+  confirmMsg: { fontFamily: fonts.body, fontSize: 14, lineHeight: 20, color: colors.text, marginBottom: 18 },
+  confirmRow: { flexDirection: "row", gap: 10 },
+  confirmHalf: { flex: 1, paddingVertical: 14, borderRadius: radius.md, alignItems: "center" },
+  confirmGhost: { backgroundColor: colors.surface2, borderWidth: 1, borderColor: colors.line },
+  confirmGhostText: { fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
+  confirmFill: { backgroundColor: colors.accent },
   confirmBtnDisabled: { opacity: 0.45 },
   confirmBtnText: { fontFamily: fonts.headingSemi, fontSize: 15, color: "#fff" },
 });
