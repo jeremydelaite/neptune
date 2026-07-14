@@ -191,7 +191,7 @@ export async function getBadges(req: AuthRequest, res: Response) {
     { key: "comments-50", title: "Chroniqueur", description: "50 commentaires publiés", icon: "MessageSquare", value: commentsCount, target: 50 },
     { key: "friends-5", title: "Sociable", description: "5 amis", icon: "Users", value: friends, target: 5 },
     { key: "friends-20", title: "Populaire", description: "20 amis", icon: "Users", value: friends, target: 20 },
-    { key: "watchlist-20", title: "Curieux", description: "20 titres à voir", icon: "Bookmark", value: watchlist, target: 20 },
+    { key: "watchlist-10", title: "Curieux", description: "10 titres à voir", icon: "Bookmark", value: watchlist, target: 10 },
     { key: "watchlist-100", title: "Collectionneur", description: "100 titres à voir", icon: "Bookmark", value: watchlist, target: 100 },
   ];
 
