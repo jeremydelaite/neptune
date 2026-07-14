@@ -89,6 +89,16 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
   const unlockedBadges = allBadges.filter((b) => b.unlocked);
   const badgeRows = await prisma.unlockedBadge.findMany({ where: { userId: id }, select: { badgeKey: true, createdAt: true } });
   const badgeDates = new Map(badgeRows.map((r) => [r.badgeKey, r.createdAt.toISOString()]));
+  // Enregistre silencieusement les succès pas encore datés (sans notifier) pour toujours afficher une date
+  const missingDates = unlockedBadges.filter((b) => !badgeDates.has(b.key));
+  if (missingDates.length) {
+    await prisma.unlockedBadge.createMany({
+      data: missingDates.map((b) => ({ userId: id, badgeKey: b.key })),
+      skipDuplicates: true,
+    });
+    const now = new Date().toISOString();
+    missingDates.forEach((b) => badgeDates.set(b.key, now));
+  }
 
   res.json({
     id: user.id,
