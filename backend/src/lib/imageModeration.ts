@@ -16,6 +16,10 @@ function dataUriToBuffer(dataUri: string): { buffer: Buffer; mime: string } | nu
 
 // Vérifie un avatar. Retourne { ok:false, reason } si l'image doit être refusée.
 export async function moderateAvatar(dataUri: string): Promise<ModerationResult> {
+  // Aide au test : force le refus pour vérifier le flux côté app (sans clé)
+  if (process.env.MODERATION_FORCE_REJECT === "true") {
+    return { ok: false, reason: "(test) Image refusée par la modération." };
+  }
   if (!API_USER || !API_SECRET) return { ok: true }; // modération désactivée (pas de clé)
 
   const decoded = dataUriToBuffer(dataUri);
