@@ -142,3 +142,54 @@ export async function getTopGenres(req: AuthRequest, res: Response) {
 
   res.json({ movie: top(movie), tv: top(tv) });
 }
+
+
+// GET /stats/badges — succès débloqués + progression
+export async function getBadges(req: AuthRequest, res: Response) {
+  const userId = req.userId!;
+  const [moviesSeen, seriesSeen, completedSeries, episodesSeen, epTime, ratingsCount, commentsCount, friends, watchlist] =
+    await Promise.all([
+      prisma.trackedItem.count({ where: { userId, mediaType: "MOVIE", status: "COMPLETED" } }),
+      prisma.trackedItem.count({ where: { userId, mediaType: "TV", status: { in: ["WATCHING", "COMPLETED", "ARCHIVED"] } } }),
+      prisma.trackedItem.count({ where: { userId, mediaType: "TV", status: "COMPLETED" } }),
+      prisma.watchedEpisode.count({ where: { userId } }),
+      prisma.watchedEpisode.aggregate({ where: { userId }, _sum: { runtimeMin: true } }),
+      prisma.rating.count({ where: { userId } }),
+      prisma.comment.count({ where: { userId } }),
+      friendsCount(userId),
+      prisma.trackedItem.count({ where: { userId, status: "TO_WATCH" } }),
+    ]);
+
+  const hours = Math.floor((epTime._sum.runtimeMin ?? 0) / 60);
+
+  const defs: { key: string; title: string; description: string; icon: string; value: number; target: number }[] = [
+    { key: "first-step", title: "Premiers pas", description: "Bienvenue sur Neptune", icon: "Rocket", value: 1, target: 1 },
+    { key: "movie-10", title: "Cinéphile", description: "10 films vus", icon: "Film", value: moviesSeen, target: 10 },
+    { key: "movie-50", title: "Grand écran", description: "50 films vus", icon: "Film", value: moviesSeen, target: 50 },
+    { key: "movie-100", title: "Cent films", description: "100 films vus", icon: "Film", value: moviesSeen, target: 100 },
+    { key: "series-5", title: "Sérievore", description: "5 séries suivies", icon: "Tv", value: seriesSeen, target: 5 },
+    { key: "series-20", title: "Binge master", description: "20 séries suivies", icon: "Tv", value: seriesSeen, target: 20 },
+    { key: "completed-10", title: "Finisseur", description: "10 séries terminées", icon: "CheckCircle2", value: completedSeries, target: 10 },
+    { key: "episodes-100", title: "Marathonien", description: "100 épisodes vus", icon: "ListChecks", value: episodesSeen, target: 100 },
+    { key: "episodes-500", title: "Ultra-marathon", description: "500 épisodes vus", icon: "ListChecks", value: episodesSeen, target: 500 },
+    { key: "hours-50", title: "Chronophage", description: "50 h de séries", icon: "Clock", value: hours, target: 50 },
+    { key: "hours-200", title: "Sans sommeil", description: "200 h de séries", icon: "Clock", value: hours, target: 200 },
+    { key: "ratings-10", title: "Critique", description: "10 notes données", icon: "Star", value: ratingsCount, target: 10 },
+    { key: "ratings-100", title: "Juré", description: "100 notes données", icon: "Star", value: ratingsCount, target: 100 },
+    { key: "comments-10", title: "Bavard", description: "10 commentaires publiés", icon: "MessageSquare", value: commentsCount, target: 10 },
+    { key: "friends-5", title: "Sociable", description: "5 amis", icon: "Users", value: friends, target: 5 },
+    { key: "watchlist-20", title: "Curieux", description: "20 titres à voir", icon: "Bookmark", value: watchlist, target: 20 },
+  ];
+
+  const badges = defs.map((d) => ({
+    key: d.key,
+    title: d.title,
+    description: d.description,
+    icon: d.icon,
+    target: d.target,
+    value: Math.min(d.value, d.target),
+    unlocked: d.value >= d.target,
+  }));
+
+  res.json({ unlocked: badges.filter((b) => b.unlocked).length, total: badges.length, badges });
+}
