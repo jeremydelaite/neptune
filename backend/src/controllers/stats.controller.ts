@@ -227,16 +227,23 @@ export async function checkBadges(userId: string): Promise<BadgeOut[]> {
   const known = await prisma.unlockedBadge.findMany({ where: { userId }, select: { badgeKey: true } });
   const knownSet = new Set(known.map((k) => k.badgeKey));
   const newly = unlockedKeys.filter((k) => !knownSet.has(k));
-  if (newly.length === 0) return badges;
 
-  await prisma.unlockedBadge.createMany({
-    data: newly.map((badgeKey) => ({ userId, badgeKey })),
-    skipDuplicates: true,
-  });
+  if (newly.length > 0) {
+    await prisma.unlockedBadge.createMany({
+      data: newly.map((badgeKey) => ({ userId, badgeKey })),
+      skipDuplicates: true,
+    });
+  }
 
-  // Rétroactif : on notifie chaque succès nouvellement enregistré (y compris ceux déjà acquis
-  // au tout premier passage).
-  for (const key of newly) {
+  // Quels succès notifier ?
+  let toNotify = newly;
+  // Rattrapage rétroactif : succès déjà enregistrés (ensemencés en silence) mais jamais notifiés
+  if (newly.length === 0) {
+    const badgeNotifs = await prisma.notification.count({ where: { userId, type: "BADGE" } });
+    if (badgeNotifs === 0) toNotify = unlockedKeys;
+  }
+
+  for (const key of toNotify) {
     const b = badges.find((x) => x.key === key);
     if (b) await notify(userId, "BADGE", `Succès débloqué : ${b.title} 🏆`);
   }
