@@ -4,6 +4,7 @@ import { AuthRequest } from "../middleware/auth";
 import { tmdbFetch } from "../services/tmdb.service";
 import { z } from "zod";
 import { friendState, friendsCount, notify } from "../lib/social";
+import { computeBadgeList } from "./stats.controller";
 
 async function isAdmin(userId: string): Promise<boolean> {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } });
@@ -84,6 +85,8 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
 
   const fState = req.userId ? await friendState(req.userId, id) : "none";
   const fCount = await friendsCount(id);
+  const allBadges = await computeBadgeList(id);
+  const unlockedBadges = allBadges.filter((b) => b.unlocked);
 
   res.json({
     id: user.id,
@@ -94,6 +97,11 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
     isSelf: user.id === req.userId,
     friendStatus: fState,
     friendsCount: fCount,
+    badges: {
+      unlocked: unlockedBadges.length,
+      total: allBadges.length,
+      items: unlockedBadges.map((b) => ({ key: b.key, title: b.title, icon: b.icon })),
+    },
     isBlocked: !!blocked,
     photoReportedByMe: !!photoReported,
     suspendedUntil: user.suspendedUntil ? user.suspendedUntil.toISOString() : null,

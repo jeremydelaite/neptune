@@ -146,7 +146,7 @@ export async function getTopGenres(req: AuthRequest, res: Response) {
 }
 
 
-interface BadgeOut {
+export interface BadgeOut {
   key: string;
   title: string;
   description: string;
@@ -157,7 +157,7 @@ interface BadgeOut {
 }
 
 // Calcule la liste des succès (débloqués + progression) pour un utilisateur
-async function computeBadgeList(userId: string): Promise<BadgeOut[]> {
+export async function computeBadgeList(userId: string): Promise<BadgeOut[]> {
   const [moviesSeen, seriesSeen, completedSeries, episodesSeen, epTime, ratingsCount, commentsCount, friends, watchlist] =
     await Promise.all([
       prisma.trackedItem.count({ where: { userId, mediaType: "MOVIE", status: "COMPLETED" } }),

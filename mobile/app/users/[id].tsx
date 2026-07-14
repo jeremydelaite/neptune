@@ -3,13 +3,17 @@ import { useCallback, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator, Modal, Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
-import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check, AlertTriangle, Clock3, Ban, RotateCcw, ImageOff, UserPlus, UserCheck, UserMinus } from "lucide-react-native";
+import { ArrowLeft, Film, Tv, Clock, MessageSquare, Star, ShieldCheck, Flag, EyeOff, Eye, Check, AlertTriangle, Clock3, Ban, RotateCcw, ImageOff, UserPlus, UserCheck, UserMinus, Rocket, ListChecks, Bookmark, Users, CheckCircle2, Trophy } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
 import { TextInput } from "react-native";
 import { colors } from "../../src/theme/colors";
 import { fonts, radius } from "../../src/theme/typography";
+
+const BADGE_ICONS: Record<string, any> = {
+  Rocket, Film, Tv, CheckCircle2, ListChecks, Clock, Star, MessageSquare, Users, Bookmark,
+};
 
 interface PublicProfile {
   id: string;
@@ -22,6 +26,7 @@ interface PublicProfile {
   photoReportedByMe: boolean;
   friendStatus: "none" | "friends" | "pending_out" | "pending_in";
   friendsCount: number;
+  badges: { unlocked: number; total: number; items: { key: string; title: string; icon: string }[] };
   suspendedUntil: string | null;
   bannedAt: string | null;
   stats: {
@@ -373,6 +378,29 @@ export default function PublicProfileScreen() {
             <Text style={styles.statLabel}>Commentaires publiés</Text>
           </View>
 
+          {/* Succès */}
+          {profile.badges && profile.badges.unlocked > 0 && (
+            <View style={styles.card}>
+              <View style={styles.badgesHeader}>
+                <Trophy size={16} color={colors.accentPastel} />
+                <Text style={styles.cardTitle}>Succès · {profile.badges.unlocked}/{profile.badges.total}</Text>
+              </View>
+              <View style={styles.badgesGrid}>
+                {profile.badges.items.map((b) => {
+                  const Icon = BADGE_ICONS[b.icon] ?? Star;
+                  return (
+                    <View key={b.key} style={styles.badgeItem}>
+                      <View style={styles.badgeCircle}>
+                        <Icon size={20} color={colors.accentPastel} />
+                      </View>
+                      <Text style={styles.badgeLabel} numberOfLines={1}>{b.title}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {/* Répartition des notes */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Répartition des notes</Text>
@@ -582,6 +610,15 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   cardTitle: { fontFamily: fonts.heading, fontSize: 14, color: colors.text, marginBottom: 14 },
+  badgesHeader: { flexDirection: "row", alignItems: "center", gap: 8 },
+  badgesGrid: { flexDirection: "row", flexWrap: "wrap" },
+  badgeItem: { width: "25%", alignItems: "center", paddingVertical: 8, gap: 5 },
+  badgeCircle: {
+    width: 44, height: 44, borderRadius: 999,
+    backgroundColor: "rgba(46,155,255,0.15)", borderWidth: 1, borderColor: colors.accent,
+    alignItems: "center", justifyContent: "center",
+  },
+  badgeLabel: { fontFamily: fonts.body, fontSize: 9, color: colors.dim, textAlign: "center" },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
 
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
