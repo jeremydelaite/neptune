@@ -226,7 +226,6 @@ export async function checkBadges(userId: string): Promise<BadgeOut[]> {
 
   const known = await prisma.unlockedBadge.findMany({ where: { userId }, select: { badgeKey: true } });
   const knownSet = new Set(known.map((k) => k.badgeKey));
-  const isFirst = known.length === 0;
   const newly = unlockedKeys.filter((k) => !knownSet.has(k));
   if (newly.length === 0) return badges;
 
@@ -235,11 +234,11 @@ export async function checkBadges(userId: string): Promise<BadgeOut[]> {
     skipDuplicates: true,
   });
 
-  if (!isFirst) {
-    for (const key of newly) {
-      const b = badges.find((x) => x.key === key);
-      if (b) await notify(userId, "BADGE", `Succès débloqué : ${b.title} 🏆`);
-    }
+  // Rétroactif : on notifie chaque succès nouvellement enregistré (y compris ceux déjà acquis
+  // au tout premier passage).
+  for (const key of newly) {
+    const b = badges.find((x) => x.key === key);
+    if (b) await notify(userId, "BADGE", `Succès débloqué : ${b.title} 🏆`);
   }
   return badges;
 }
