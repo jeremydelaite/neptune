@@ -140,7 +140,7 @@ export async function getTopGenres(req: AuthRequest, res: Response) {
     [...m.entries()]
       .map(([id, v]) => ({ id, name: v.name, count: v.count }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, 3);
+      .slice(0, 6);
 
   res.json({ movie: top(movie), tv: top(tv) });
 }

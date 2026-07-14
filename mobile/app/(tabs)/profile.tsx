@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff, Bell, Users, Plus, ChevronRight, Share2, Trophy } from "lucide-react-native";
+import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff, Bell, Users, Plus, ChevronRight, Share2, Trophy, BarChart3 } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
@@ -485,6 +485,18 @@ export default function ProfileScreen() {
                 <Text style={styles.linkLabel}>Succès</Text>
               </Pressable>
             </View>
+
+            {/* Statistiques détaillées */}
+            <Pressable style={[styles.friendsCard, { marginBottom: 14 }]} onPress={() => router.push("/stats")}>
+              <View style={styles.linkIcon}>
+                <BarChart3 size={18} color={colors.accentPastel} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.friendsValue}>Statistiques détaillées</Text>
+                <Text style={styles.friendsSub}>Activité, genres favoris, temps total…</Text>
+              </View>
+              <ChevronRight size={20} color={colors.dim} />
+            </Pressable>
           </>
         )}
 
