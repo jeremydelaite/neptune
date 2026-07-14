@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff, Bell, Users, Plus, ChevronRight } from "lucide-react-native";
+import { Film, Tv, Clock, Star, MessageSquare, ShieldAlert, Trash2, CheckCircle2, Bookmark, Eye, Settings, AlertTriangle, Search, X, ImageOff, Bell, Users, Plus, ChevronRight, Share2 } from "lucide-react-native";
 import { api } from "../../src/services/api";
 import { useAuth } from "../../src/hooks/useAuth";
 import { AvatarZoom } from "../../src/components/ui/AvatarZoom";
@@ -390,6 +390,18 @@ export default function ProfileScreen() {
                 <Text style={styles.linkLabel}>Vu</Text>
               </Pressable>
             </View>
+
+            {/* Carte de visite partageable */}
+            <Pressable style={[styles.friendsCard, { marginBottom: 14 }]} onPress={() => router.push("/card")}>
+              <View style={styles.linkIcon}>
+                <Share2 size={18} color={colors.accentPastel} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.friendsValue}>Ma carte de visite</Text>
+                <Text style={styles.friendsSub}>Partager mes stats en image</Text>
+              </View>
+              <ChevronRight size={20} color={colors.dim} />
+            </Pressable>
 
             {/* Répartition des notes */}
             <View style={styles.card}>
