@@ -76,6 +76,7 @@ export default function SettingsScreen() {
   const [myReports, setMyReports] = useState<MyReport[]>([]);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarMsg, setAvatarMsg] = useState<Feedback>(null);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -136,6 +137,7 @@ export default function SettingsScreen() {
     if (res.canceled || !res.assets?.[0]) return;
 
     setAvatarBusy(true);
+    setAvatarMsg(null);
     try {
       const manip = await ImageManipulator.manipulateAsync(
         res.assets[0].uri,
@@ -145,8 +147,9 @@ export default function SettingsScreen() {
       const dataUri = `data:image/jpeg;base64,${manip.base64}`;
       const r = await api.patch<{ avatarUrl: string | null }>("/auth/avatar", { avatar: dataUri });
       await updateUser({ avatarUrl: r.avatarUrl });
+      setAvatarMsg({ type: "ok", text: "Photo mise à jour" });
     } catch (e) {
-      Alert.alert("Échec", e instanceof Error ? e.message : "Impossible de changer la photo.");
+      setAvatarMsg({ type: "err", text: e instanceof Error ? e.message : "Impossible de changer la photo." });
     } finally {
       setAvatarBusy(false);
     }
@@ -154,6 +157,7 @@ export default function SettingsScreen() {
 
   async function removeAvatar() {
     setAvatarBusy(true);
+    setAvatarMsg(null);
     try {
       await api.patch("/auth/avatar", { avatar: null });
       await updateUser({ avatarUrl: null });
@@ -277,6 +281,9 @@ export default function SettingsScreen() {
                   <Trash2 size={15} color={colors.dim} />
                   <Text style={styles.btnGhostText}>Supprimer</Text>
                 </Pressable>
+              )}
+              {avatarMsg && (
+                <Text style={avatarMsg.type === "ok" ? styles.ok : styles.err}>{avatarMsg.text}</Text>
               )}
             </View>
           </View>
