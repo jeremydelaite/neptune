@@ -87,6 +87,8 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
   const fCount = await friendsCount(id);
   const allBadges = await computeBadgeList(id);
   const unlockedBadges = allBadges.filter((b) => b.unlocked);
+  const badgeRows = await prisma.unlockedBadge.findMany({ where: { userId: id }, select: { badgeKey: true, createdAt: true } });
+  const badgeDates = new Map(badgeRows.map((r) => [r.badgeKey, r.createdAt.toISOString()]));
 
   res.json({
     id: user.id,
@@ -100,7 +102,13 @@ export async function getPublicProfile(req: AuthRequest, res: Response) {
     badges: {
       unlocked: unlockedBadges.length,
       total: allBadges.length,
-      items: unlockedBadges.map((b) => ({ key: b.key, title: b.title, icon: b.icon })),
+      items: unlockedBadges.map((b) => ({
+        key: b.key,
+        title: b.title,
+        icon: b.icon,
+        description: b.description,
+        unlockedAt: badgeDates.get(b.key) ?? null,
+      })),
     },
     isBlocked: !!blocked,
     photoReportedByMe: !!photoReported,

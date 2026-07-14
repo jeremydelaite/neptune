@@ -26,7 +26,7 @@ interface PublicProfile {
   photoReportedByMe: boolean;
   friendStatus: "none" | "friends" | "pending_out" | "pending_in";
   friendsCount: number;
-  badges: { unlocked: number; total: number; items: { key: string; title: string; icon: string }[] };
+  badges: { unlocked: number; total: number; items: { key: string; title: string; icon: string; description: string; unlockedAt: string | null }[] };
   suspendedUntil: string | null;
   bannedAt: string | null;
   stats: {
@@ -75,6 +75,7 @@ export default function PublicProfileScreen() {
   const [reportDone, setReportDone] = useState(false);
   const [photoReported, setPhotoReported] = useState(false);
   const [friend, setFriend] = useState<"none" | "friends" | "pending_out" | "pending_in">("none");
+  const [selBadge, setSelBadge] = useState<{ key: string; title: string; icon: string; description: string; unlockedAt: string | null } | null>(null);
   const [adminModal, setAdminModal] = useState<null | "warn" | "suspend" | "ban">(null);
   const [warnText, setWarnText] = useState("");
   const [busyAdmin, setBusyAdmin] = useState(false);
@@ -389,12 +390,12 @@ export default function PublicProfileScreen() {
                 {profile.badges.items.map((b) => {
                   const Icon = BADGE_ICONS[b.icon] ?? Star;
                   return (
-                    <View key={b.key} style={styles.badgeItem}>
+                    <Pressable key={b.key} style={styles.badgeItem} onPress={() => setSelBadge(b)}>
                       <View style={styles.badgeCircle}>
                         <Icon size={20} color={colors.accentPastel} />
                       </View>
                       <Text style={styles.badgeLabel} numberOfLines={1}>{b.title}</Text>
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -532,6 +533,30 @@ export default function PublicProfileScreen() {
         </Pressable>
       </Modal>
 
+      <Modal visible={selBadge !== null} transparent animationType="fade" onRequestClose={() => setSelBadge(null)}>
+        <Pressable style={styles.badgeBackdrop} onPress={() => setSelBadge(null)}>
+          <Pressable style={styles.badgeSheet} onPress={() => {}}>
+            {selBadge && (() => {
+              const Icon = BADGE_ICONS[selBadge.icon] ?? Star;
+              return (
+                <>
+                  <View style={styles.badgeBig}>
+                    <Icon size={30} color={colors.accentPastel} />
+                  </View>
+                  <Text style={styles.badgeBigTitle}>{selBadge.title}</Text>
+                  <Text style={styles.badgeBigDesc}>{selBadge.description}</Text>
+                  {selBadge.unlockedAt && (
+                    <Text style={styles.badgeBigDate}>
+                      Débloqué le {new Date(selBadge.unlockedAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}
+                    </Text>
+                  )}
+                </>
+              );
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <Modal visible={reportOpen} transparent animationType="fade" onRequestClose={() => setReportOpen(false)}>
         <Pressable style={styles.backdrop} onPress={() => setReportOpen(false)}>
           <Pressable style={styles.sheet} onPress={() => {}}>
@@ -619,6 +644,12 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center",
   },
   badgeLabel: { fontFamily: fonts.body, fontSize: 9, color: colors.dim, textAlign: "center" },
+  badgeBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 32 },
+  badgeSheet: { width: "100%", maxWidth: 320, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line, borderRadius: radius.lg, padding: 22, alignItems: "center", gap: 10 },
+  badgeBig: { width: 64, height: 64, borderRadius: 999, backgroundColor: "rgba(46,155,255,0.15)", borderWidth: 1, borderColor: colors.accent, alignItems: "center", justifyContent: "center" },
+  badgeBigTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.text, textAlign: "center" },
+  badgeBigDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, textAlign: "center" },
+  badgeBigDate: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.accentPastel, marginTop: 2 },
   muted: { fontFamily: fonts.body, fontSize: 13, color: colors.dim },
 
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 10 },
