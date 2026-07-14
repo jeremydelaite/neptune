@@ -254,5 +254,8 @@ export async function checkBadges(userId: string): Promise<BadgeOut[]> {
 export async function getBadges(req: AuthRequest, res: Response) {
   const userId = req.userId!;
   const badges = await checkBadges(userId);
-  res.json({ unlocked: badges.filter((b) => b.unlocked).length, total: badges.length, badges });
+  const rows = await prisma.unlockedBadge.findMany({ where: { userId }, select: { badgeKey: true, createdAt: true } });
+  const dateMap = new Map(rows.map((r) => [r.badgeKey, r.createdAt.toISOString()]));
+  const withDates = badges.map((b) => ({ ...b, unlockedAt: b.unlocked ? dateMap.get(b.key) ?? null : null }));
+  res.json({ unlocked: withDates.filter((b) => b.unlocked).length, total: withDates.length, badges: withDates });
 }

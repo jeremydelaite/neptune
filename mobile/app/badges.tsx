@@ -1,10 +1,10 @@
 // SUCCÈS : badges débloqués selon l'activité, avec progression
 import { useCallback, useState } from "react";
-import { View, Text, Pressable, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
+import { View, Text, Pressable, ScrollView, ActivityIndicator, Modal, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import {
-  ArrowLeft, Rocket, Film, Tv, CheckCircle2, ListChecks, Clock, Star, MessageSquare, Users, Bookmark, Lock,
+  ArrowLeft, Rocket, Film, Tv, CheckCircle2, ListChecks, Clock, Star, MessageSquare, Users, Bookmark, Lock, X,
 } from "lucide-react-native";
 import { api } from "../src/services/api";
 import { colors } from "../src/theme/colors";
@@ -18,6 +18,7 @@ interface Badge {
   value: number;
   target: number;
   unlocked: boolean;
+  unlockedAt?: string | null;
 }
 interface BadgesResp {
   unlocked: number;
@@ -33,6 +34,7 @@ export default function BadgesScreen() {
   const router = useRouter();
   const [data, setData] = useState<BadgesResp | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Badge | null>(null);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -74,7 +76,7 @@ export default function BadgesScreen() {
               const Icon = ICONS[b.icon] ?? Star;
               const pct = Math.min(1, b.value / b.target);
               return (
-                <View key={b.key} style={[styles.badge, b.unlocked && styles.badgeOn]}>
+                <Pressable key={b.key} style={[styles.badge, b.unlocked && styles.badgeOn]} onPress={() => setSelected(b)}>
                   <View style={[styles.iconWrap, b.unlocked ? styles.iconOn : styles.iconOff]}>
                     {b.unlocked ? (
                       <Icon size={24} color={colors.accentPastel} />
@@ -94,12 +96,49 @@ export default function BadgesScreen() {
                       <Text style={styles.progress}>{b.value} / {b.target}</Text>
                     </>
                   )}
-                </View>
+                </Pressable>
               );
             })}
           </View>
         </ScrollView>
       )}
+
+      <Modal visible={selected !== null} transparent animationType="fade" onRequestClose={() => setSelected(null)}>
+        <Pressable style={styles.mBackdrop} onPress={() => setSelected(null)}>
+          <Pressable style={styles.mSheet} onPress={() => {}}>
+            {selected && (() => {
+              const Icon = ICONS[selected.icon] ?? Star;
+              return (
+                <>
+                  <Pressable style={styles.mClose} onPress={() => setSelected(null)} hitSlop={10}>
+                    <X size={20} color={colors.dim} />
+                  </Pressable>
+                  <View style={[styles.mIcon, selected.unlocked ? styles.iconOn : styles.iconOff]}>
+                    {selected.unlocked ? <Icon size={30} color={colors.accentPastel} /> : <Lock size={26} color={colors.dim} />}
+                  </View>
+                  <Text style={styles.mTitle}>{selected.title}</Text>
+                  <Text style={styles.mDesc}>{selected.description}</Text>
+                  {selected.unlocked ? (
+                    <View style={styles.mStatusOk}>
+                      <CheckCircle2 size={15} color={colors.accentPastel} />
+                      <Text style={styles.mStatusOkText}>
+                        Débloqué{selected.unlockedAt ? ` le ${new Date(selected.unlockedAt).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" })}` : ""}
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      <View style={styles.mTrack}>
+                        <View style={[styles.fill, { width: `${Math.min(1, selected.value / selected.target) * 100}%` }]} />
+                      </View>
+                      <Text style={styles.mProgress}>Progression : {selected.value} / {selected.target}</Text>
+                    </>
+                  )}
+                </>
+              );
+            })()}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -135,4 +174,18 @@ const styles = StyleSheet.create({
   track: { height: 6, borderRadius: 99, backgroundColor: colors.surface2, overflow: "hidden", marginTop: 4 },
   fill: { height: "100%", borderRadius: 99, backgroundColor: colors.accent },
   progress: { fontFamily: fonts.bodyMedium, fontSize: 10, color: colors.dim, textAlign: "right" },
+
+  mBackdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center", padding: 32 },
+  mSheet: {
+    width: "100%", maxWidth: 340, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.line,
+    borderRadius: radius.lg, padding: 22, alignItems: "center", gap: 10,
+  },
+  mClose: { position: "absolute", top: 12, right: 12 },
+  mIcon: { width: 64, height: 64, borderRadius: 999, alignItems: "center", justifyContent: "center", marginTop: 4 },
+  mTitle: { fontFamily: fonts.heading, fontSize: 18, color: colors.text, textAlign: "center" },
+  mDesc: { fontFamily: fonts.body, fontSize: 13, color: colors.dim, textAlign: "center" },
+  mStatusOk: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  mStatusOkText: { fontFamily: fonts.headingSemi, fontSize: 13, color: colors.accentPastel },
+  mTrack: { width: "100%", height: 8, borderRadius: 99, backgroundColor: colors.surface2, overflow: "hidden", marginTop: 6 },
+  mProgress: { fontFamily: fonts.bodyMedium, fontSize: 12, color: colors.dim },
 });
