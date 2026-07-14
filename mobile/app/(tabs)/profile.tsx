@@ -391,29 +391,6 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
 
-            {/* Carte de visite partageable */}
-            <Pressable style={styles.friendsCard} onPress={() => router.push("/card")}>
-              <View style={styles.linkIcon}>
-                <Share2 size={18} color={colors.accentPastel} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.friendsValue}>Ma carte de visite</Text>
-                <Text style={styles.friendsSub}>Partager mes stats en image</Text>
-              </View>
-              <ChevronRight size={20} color={colors.dim} />
-            </Pressable>
-            <View style={{ height: 10 }} />
-            {/* Succès */}
-            <Pressable style={[styles.friendsCard, { marginBottom: 14 }]} onPress={() => router.push("/badges")}>
-              <View style={styles.linkIcon}>
-                <Trophy size={18} color={colors.accentPastel} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.friendsValue}>Mes succès</Text>
-                <Text style={styles.friendsSub}>Badges débloqués selon ton activité</Text>
-              </View>
-              <ChevronRight size={20} color={colors.dim} />
-            </Pressable>
 
             {/* Répartition des notes */}
             <View style={styles.card}>
@@ -491,6 +468,22 @@ export default function ProfileScreen() {
                   )}
                 </Pressable>
               )}
+            </View>
+
+            {/* Carte de visite + Succès — 2 colonnes */}
+            <View style={styles.linksRow}>
+              <Pressable style={styles.linkCard} onPress={() => router.push("/card")}>
+                <View style={styles.linkIcon}>
+                  <Share2 size={18} color={colors.accentPastel} />
+                </View>
+                <Text style={styles.linkLabel}>Carte de visite</Text>
+              </Pressable>
+              <Pressable style={styles.linkCard} onPress={() => router.push("/badges")}>
+                <View style={styles.linkIcon}>
+                  <Trophy size={18} color={colors.accentPastel} />
+                </View>
+                <Text style={styles.linkLabel}>Succès</Text>
+              </Pressable>
             </View>
           </>
         )}
