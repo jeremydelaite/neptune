@@ -6,7 +6,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CANDIDATES = (process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000")
   .split(",")
-  .map((s) => s.trim().replace(/\/$/, ""))
+  .map((s: string) => s.trim().replace(/\/$/, ""))
   .filter(Boolean);
 
 let activeBase: string | null = CANDIDATES.length === 1 ? CANDIDATES[0] : null;
