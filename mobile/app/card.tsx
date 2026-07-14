@@ -4,7 +4,7 @@ import { View, Text, Pressable, ActivityIndicator, StyleSheet, Image } from "rea
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { ArrowLeft, Share2, Film, Tv, Clock, MessageSquare, Users, Star } from "lucide-react-native";
+import { ArrowLeft, Share2, Film, Tv, Clock, MessageSquare, Star, ListChecks } from "lucide-react-native";
 import { captureRef } from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import { api } from "../src/services/api";
@@ -79,10 +79,10 @@ export default function CardScreen() {
     ? [
         { icon: Film, value: stats.moviesSeen, label: "Films" },
         { icon: Tv, value: stats.seriesSeen, label: "Séries" },
+        { icon: ListChecks, value: stats.episodesSeen, label: "Épisodes" },
         { icon: Clock, value: formatHours(stats.seriesTimeMin), label: "De séries" },
-        { icon: MessageSquare, value: stats.commentsCount, label: "Commentaires" },
         { icon: Star, value: totalRatings ? `${avgRating.toFixed(1)}/5` : "—", label: "Note moy." },
-        { icon: Star, value: stats.episodesSeen, label: "Épisodes" },
+        { icon: MessageSquare, value: stats.commentsCount, label: "Commentaires" },
       ]
     : [];
 
