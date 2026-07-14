@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "../lib/prisma";
 import crypto from "crypto";
 import { sendVerificationEmail } from "../lib/mail";
+import { moderateAvatar } from "../lib/imageModeration";
 import { AuthRequest } from "../middleware/auth";
 
 const registerSchema = z.object({
@@ -206,6 +207,12 @@ export async function updateAvatar(req: AuthRequest, res: Response) {
   });
   const parsed = schema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.issues[0].message });
+
+  // Modération IA de la nouvelle photo (si un fournisseur est configuré)
+  if (parsed.data.avatar) {
+    const mod = await moderateAvatar(parsed.data.avatar);
+    if (!mod.ok) return res.status(400).json({ error: mod.reason ?? "Image refusée par la modération." });
+  }
 
   const user = await prisma.user.update({
     where: { id: req.userId },
