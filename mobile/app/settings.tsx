@@ -16,7 +16,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft, Pencil, LogOut, Camera, Trash2, ChevronRight, EyeOff, X } from "lucide-react-native";
+import { ArrowLeft, Pencil, LogOut, Camera, Trash2, ChevronRight, EyeOff, X, Info } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { api } from "../src/services/api";
@@ -438,6 +438,17 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
+          {/* À propos */}
+          <Pressable style={styles.card} onPress={() => router.push("/about")}>
+            <View style={styles.aboutRow}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Info size={18} color={colors.accentPastel} />
+                <Text style={styles.aboutLabel}>À propos de Neptune</Text>
+              </View>
+              <ChevronRight size={18} color={colors.dim} />
+            </View>
+          </Pressable>
+
           {/* Déconnexion */}
           <Pressable
             style={({ pressed }) => [styles.logout, pressed && styles.logoutPressed]}
@@ -659,6 +670,8 @@ const styles = StyleSheet.create({
   },
   logoutPressed: { opacity: 0.7 },
   logoutText: { fontFamily: fonts.headingSemi, fontSize: 15, color: colors.danger },
+  aboutRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  aboutLabel: { fontFamily: fonts.headingSemi, fontSize: 14, color: colors.text },
   unblockBtn: {
     flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: radius.sm,
