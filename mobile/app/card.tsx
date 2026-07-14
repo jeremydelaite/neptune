@@ -70,6 +70,10 @@ export default function CardScreen() {
   }
 
   const maxRating = Math.max(1, ...(stats?.ratingsBreakdown.map((r) => r.count) ?? [1]));
+  const totalRatings = stats?.ratingsBreakdown.reduce((a, r) => a + r.count, 0) ?? 0;
+  const avgRating = totalRatings
+    ? (stats!.ratingsBreakdown.reduce((a, r) => a + r.score * r.count, 0) / totalRatings)
+    : 0;
 
   const STATS = stats
     ? [
@@ -77,7 +81,7 @@ export default function CardScreen() {
         { icon: Tv, value: stats.seriesSeen, label: "Séries" },
         { icon: Clock, value: formatHours(stats.seriesTimeMin), label: "De séries" },
         { icon: MessageSquare, value: stats.commentsCount, label: "Commentaires" },
-        { icon: Users, value: stats.friendsCount, label: "Amis" },
+        { icon: Star, value: totalRatings ? `${avgRating.toFixed(1)}/5` : "—", label: "Note moy." },
         { icon: Star, value: stats.episodesSeen, label: "Épisodes" },
       ]
     : [];
