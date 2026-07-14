@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft, Film, Tv, Clock, Star, TrendingUp } from "lucide-react-native";
+import { ArrowLeft, Film, Tv } from "lucide-react-native";
 import { api } from "../src/services/api";
 import { colors } from "../src/theme/colors";
 import { fonts, radius } from "../src/theme/typography";
@@ -19,13 +19,6 @@ interface Stats {
 interface Genre { id: number; name: string; count: number }
 interface TopGenres { movie: Genre[]; tv: Genre[] }
 
-const AVG_MOVIE_MIN = 115;
-
-function fmtDuration(min: number): string {
-  const h = Math.round(min / 60);
-  if (h < 24) return `${h} h`;
-  return `${Math.floor(h / 24)} j ${h % 24} h`;
-}
 function monthLabel(ym: string): string {
   const d = new Date(`${ym}-01T00:00:00`);
   return d.toLocaleDateString("fr-FR", { month: "short" }).replace(".", "");
@@ -62,14 +55,8 @@ export default function StatsScreen() {
     }, [])
   );
 
-  const totalRatings = stats?.ratingsBreakdown.reduce((a, r) => a + r.count, 0) ?? 0;
-  const avgRating = totalRatings
-    ? stats!.ratingsBreakdown.reduce((a, r) => a + r.score * r.count, 0) / totalRatings
-    : 0;
-  const totalMin = (stats?.seriesTimeMin ?? 0) + (stats?.moviesSeen ?? 0) * AVG_MOVIE_MIN;
   const months = stats?.monthlyActivity ?? [];
   const maxMonth = Math.max(1, ...months.map((m) => m.count));
-  const best = months.reduce<{ month: string; count: number } | null>((a, m) => (!a || m.count > a.count ? m : a), null);
   const maxGenre = Math.max(1, ...(genres?.movie ?? []).map((g) => g.count), ...(genres?.tv ?? []).map((g) => g.count));
 
   return (
@@ -87,25 +74,6 @@ export default function StatsScreen() {
         <Text style={styles.error}>Impossible de charger les statistiques.</Text>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
-          {/* Résumé */}
-          <View style={styles.row}>
-            <View style={styles.mini}>
-              <Clock size={16} color={colors.accentPastel} />
-              <Text style={styles.miniValue}>{fmtDuration(totalMin)}</Text>
-              <Text style={styles.miniLabel}>Temps total ≈</Text>
-            </View>
-            <View style={styles.mini}>
-              <Star size={16} color={colors.accentPastel} />
-              <Text style={styles.miniValue}>{totalRatings ? `${avgRating.toFixed(1)}/5` : "—"}</Text>
-              <Text style={styles.miniLabel}>Note moyenne</Text>
-            </View>
-            <View style={styles.mini}>
-              <TrendingUp size={16} color={colors.accentPastel} />
-              <Text style={styles.miniValue}>{best ? monthLabel(best.month) : "—"}</Text>
-              <Text style={styles.miniLabel}>Meilleur mois</Text>
-            </View>
-          </View>
-
           {/* Activité mensuelle */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Activité (épisodes / mois)</Text>
