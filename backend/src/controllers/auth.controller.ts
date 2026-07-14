@@ -6,6 +6,8 @@ import { prisma } from "../lib/prisma";
 import crypto from "crypto";
 import { sendVerificationEmail } from "../lib/mail";
 import { moderateAvatar } from "../lib/imageModeration";
+import { accountBlockMessage } from "../lib/accountStatus";
+export { accountBlockMessage };
 import { AuthRequest } from "../middleware/auth";
 
 const registerSchema = z.object({
@@ -23,15 +25,7 @@ function signToken(userId: string) {
   return jwt.sign({ userId }, process.env.JWT_SECRET!, { expiresIn: "30d" });
 }
 
-// Renvoie un message si le compte est banni ou suspendu, sinon null
-export function accountBlockMessage(u: { bannedAt: Date | null; suspendedUntil: Date | null }): string | null {
-  if (u.bannedAt) return "Ce compte a été banni définitivement.";
-  if (u.suspendedUntil && u.suspendedUntil > new Date()) {
-    const d = u.suspendedUntil.toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
-    return `Ce compte est suspendu jusqu'au ${d}.`;
-  }
-  return null;
-}
+
 
 function newVerifyToken() {
   return {

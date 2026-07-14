@@ -1,6 +1,8 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import authRoutes from "./routes/auth.routes";
 import usersRoutes from "./routes/users.routes";
 import friendsRoutes from "./routes/friends.routes";
@@ -14,12 +16,35 @@ import statsRoutes from "./routes/stats.routes";
 import recoRoutes from "./routes/recommendations.routes";
 import { requireAuth } from "./middleware/auth";
 
+// Sécurité : un secret JWT fort est obligatoire
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 16) {
+  console.error("❌ JWT_SECRET manquant ou trop court (>= 16 caractères requis). Arrêt.");
+  process.exit(1);
+}
+
 const app = express();
-app.use(cors());
+app.disable("x-powered-by");
+app.use(helmet());
+const ALLOWED = (process.env.CORS_ORIGINS ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.use(cors(ALLOWED.length ? { origin: ALLOWED } : {})); // ouvert si non configuré (dev)
 app.use(express.json({ limit: "2mb" }));
 
+// Limitation de débit : freine le brute-force et l'abus (login, inscription, emails)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 30, // 30 tentatives / IP / fenêtre
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Trop de tentatives. Réessaie dans quelques minutes." },
+});
+const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
+app.use(apiLimiter); // plafond global doux
+
 // ---- Routes publiques ----
-app.use("/auth", authRoutes);
+app.use("/auth", authLimiter, authRoutes);
 app.use("/tmdb", tmdbRoutes); // catalogue consultable sans compte
 
 // ---- Routes protégées (JWT) ----
