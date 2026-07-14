@@ -40,6 +40,7 @@ enum NotifType {
   WARNING
   SUSPENSION
   BAN
+  BADGE
 }
 
 // ---------- MODÈLES ----------
@@ -76,6 +77,7 @@ model User {
   friendRequestsSent     Friendship[]   @relation("FriendRequester")
   friendRequestsReceived Friendship[]   @relation("FriendAddressee")
   notifications          Notification[] @relation("UserNotifications")
+  unlockedBadges         UnlockedBadge[]
 
   @@map("users")
 }
@@ -248,4 +250,18 @@ model Notification {
 
   @@index([userId, createdAt])
   @@map("notifications")
+}
+
+
+// Succès déjà débloqués (pour ne notifier qu'une fois)
+model UnlockedBadge {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  badgeKey  String   @map("badge_key")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeKey])
+  @@map("unlocked_badges")
 }

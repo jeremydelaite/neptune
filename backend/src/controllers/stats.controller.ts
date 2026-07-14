@@ -2,7 +2,7 @@ import { Response } from "express";
 import { prisma } from "../lib/prisma";
 import { AuthRequest } from "../middleware/auth";
 import { tmdbFetch } from "../services/tmdb.service";
-import { friendsCount } from "../lib/social";
+import { friendsCount, notify } from "../lib/social";
 
 // GET /stats — récap complet pour la page Compte
 export async function getStats(req: AuthRequest, res: Response) {
@@ -24,6 +24,8 @@ export async function getStats(req: AuthRequest, res: Response) {
     WHERE user_id = ${userId} AND watched_at > now() - interval '12 months'
     GROUP BY month ORDER BY month
   `;
+
+  checkBadges(userId).catch(() => {}); // détecte les nouveaux succès en arrière-plan
 
   res.json({
     moviesSeen,
@@ -144,9 +146,18 @@ export async function getTopGenres(req: AuthRequest, res: Response) {
 }
 
 
-// GET /stats/badges — succès débloqués + progression
-export async function getBadges(req: AuthRequest, res: Response) {
-  const userId = req.userId!;
+interface BadgeOut {
+  key: string;
+  title: string;
+  description: string;
+  icon: string;
+  target: number;
+  value: number;
+  unlocked: boolean;
+}
+
+// Calcule la liste des succès (débloqués + progression) pour un utilisateur
+async function computeBadgeList(userId: string): Promise<BadgeOut[]> {
   const [moviesSeen, seriesSeen, completedSeries, episodesSeen, epTime, ratingsCount, commentsCount, friends, watchlist] =
     await Promise.all([
       prisma.trackedItem.count({ where: { userId, mediaType: "MOVIE", status: "COMPLETED" } }),
@@ -195,7 +206,7 @@ export async function getBadges(req: AuthRequest, res: Response) {
     { key: "watchlist-100", title: "Collectionneur", description: "100 titres à voir", icon: "Bookmark", value: watchlist, target: 100 },
   ];
 
-  const badges = defs.map((d) => ({
+  return defs.map((d) => ({
     key: d.key,
     title: d.title,
     description: d.description,
@@ -204,6 +215,38 @@ export async function getBadges(req: AuthRequest, res: Response) {
     value: Math.min(d.value, d.target),
     unlocked: d.value >= d.target,
   }));
+}
 
+// Détecte les succès nouvellement débloqués et crée une notification pour chacun.
+// Au tout premier passage, on "ensemence" sans notifier (évite un flot pour les comptes existants).
+export async function checkBadges(userId: string): Promise<BadgeOut[]> {
+  const badges = await computeBadgeList(userId);
+  const unlockedKeys = badges.filter((b) => b.unlocked).map((b) => b.key);
+  if (unlockedKeys.length === 0) return badges;
+
+  const known = await prisma.unlockedBadge.findMany({ where: { userId }, select: { badgeKey: true } });
+  const knownSet = new Set(known.map((k) => k.badgeKey));
+  const isFirst = known.length === 0;
+  const newly = unlockedKeys.filter((k) => !knownSet.has(k));
+  if (newly.length === 0) return badges;
+
+  await prisma.unlockedBadge.createMany({
+    data: newly.map((badgeKey) => ({ userId, badgeKey })),
+    skipDuplicates: true,
+  });
+
+  if (!isFirst) {
+    for (const key of newly) {
+      const b = badges.find((x) => x.key === key);
+      if (b) await notify(userId, "BADGE", `Succès débloqué : ${b.title} 🏆`);
+    }
+  }
+  return badges;
+}
+
+// GET /stats/badges — succès débloqués + progression (+ notifie les nouveaux)
+export async function getBadges(req: AuthRequest, res: Response) {
+  const userId = req.userId!;
+  const badges = await checkBadges(userId);
   res.json({ unlocked: badges.filter((b) => b.unlocked).length, total: badges.length, badges });
 }

@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { View, Text, Pressable, ScrollView, ActivityIndicator, Image, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
-import { ArrowLeft, UserPlus, UserCheck, AlertTriangle, Clock3, Ban, X, Check, Trash2 } from "lucide-react-native";
+import { ArrowLeft, UserPlus, UserCheck, AlertTriangle, Clock3, Ban, X, Check, Trash2, Trophy } from "lucide-react-native";
 import { api } from "../src/services/api";
 import { setUnread } from "../src/lib/notifState";
 import { colors } from "../src/theme/colors";
@@ -11,7 +11,7 @@ import { fonts, radius } from "../src/theme/typography";
 
 interface Notif {
   id: string;
-  type: "FRIEND_REQUEST" | "FRIEND_ACCEPTED" | "WARNING" | "SUSPENSION" | "BAN";
+  type: "FRIEND_REQUEST" | "FRIEND_ACCEPTED" | "WARNING" | "SUSPENSION" | "BAN" | "BADGE";
   message: string;
   read: boolean;
   createdAt: string;
@@ -36,6 +36,7 @@ const ICONS = {
   WARNING: AlertTriangle,
   SUSPENSION: Clock3,
   BAN: Ban,
+  BADGE: Trophy,
 } as const;
 
 const ICON_COLORS: Record<Notif["type"], string> = {
@@ -44,6 +45,7 @@ const ICON_COLORS: Record<Notif["type"], string> = {
   WARNING: "#FBBF24",
   SUSPENSION: "#FBBF24",
   BAN: "#F87171",
+  BADGE: "#2E9BFF",
 };
 
 export default function NotificationsScreen() {
