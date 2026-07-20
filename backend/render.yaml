@@ -1,0 +1,34 @@
+# Déploiement Render (https://render.com) — Blueprint
+# 1. Pousse ce repo sur GitHub
+# 2. Render → New → Blueprint → sélectionne ce repo (dossier backend)
+# 3. Renseigne les variables marquées sync:false dans le dashboard
+services:
+  - type: web
+    name: neptune-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TMDB_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: SIGHTENGINE_API_USER
+        sync: false
+      - key: SIGHTENGINE_API_SECRET
+        sync: false
